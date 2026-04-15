@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_js %}
+<script>
+    function pecaForm() {
+        return {
+            fornecedor_tipo: '{{ form.fornecedor_tipo.value|default:"escritorio" }}',
+            fornecedor_id: '{{ form.fornecedor.value|default:"" }}',
+            fornecedor_nome: '{{ form.fornecedor_nome.value|default:"" }}',
+            valor_custo: {{ form.valor_custo.value|default:0|stringformat:".2f" }},
+            percentual_lucro: {{ form.percentual_lucro.value|default:30|stringformat:".2f" }},
+            valor_venda: {{ form.valor_venda.value|default:0|stringformat:".2f" }},
+
+            init() {
+                this.$watch('valor_custo', () => this.calcularVenda());
+                this.$watch('percentual_lucro', () => this.calcularVenda());
+                this.$watch('fornecedor_tipo', () => this.calcularVenda());
+                this.calcularVenda();
+            },
+
+            atualizarNomeFornecedor(event) {
+                const select = event.target;
+                if (select.value) {
+                    const nome = select.options[select.selectedIndex].text;
+                    this.fornecedor_nome = nome;
+                }
+            },
+
+            calcularVenda() {
+                if (this.fornecedor_tipo.toLowerCase() !== 'escritorio') {
+                    this.valor_venda = 0;
+                    return;
+                }
+                const custo = parseFloat(this.valor_custo) || 0;
+                const lucro = parseFloat(this.percentual_lucro) || 0;
+                const total = custo + (custo * (lucro / 100));
+                this.valor_venda = total.toFixed(2);
+            }
+        }
+    }
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto py-8 px-4">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <nav class="flex mb-2 text-sm font-medium text-gray-500">
+                <a href="{% url 'dashboard:index' %}" class="hover:text-blue-600">Dashboard</a>
+                <i class="fas fa-chevron-right mx-2 text-gray-400 text-xs"></i>
+                <a href="{% url 'pecas:list' %}" class="hover:text-blue-600">Peças</a>
+                <i class="fas fa-chevron-right mx-2 text-gray-400 text-xs"></i>
+                <span class="text-gray-900">{{ title }}</span>
+            </nav>
+            <h1 class="text-3xl font-extrabold text-gray-900">{{ title }}</h1>
+        </div>
+        <i class="fas fa-box text-5xl text-orange-100"></i>
+    </div>
+
+    <form method="post" class="space-y-8" x-data="pecaForm()">
+        {% csrf_token %}
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <!-- Vínculo com Veículo -->
+            <div class="p-6 border-b border-gray-50 bg-gray-50/50">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-blue-100 p-2 rounded-lg"><i class="fas fa-car text-blue-600"></i></div>
+                    <h2 class="text-lg font-bold text-gray-800">Vínculo Opcional</h2>
+                </div>
+            </div>
+            <div class="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Veículo (Opcional)</label>
+                    {% render_field form.veiculo class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 py-3" %}
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Orçamento (Opcional)</label>
+                    {% render_field form.orcamento class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 py-3" %}
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">OS (Opcional)</label>
+                    {% render_field form.ordem class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 py-3" %}
+                </div>
+            </div>
+            <div class="px-8 pb-4">
+                <p class="text-xs text-gray-400 italic">Vincule a peça a um veículo, orçamento ou ordem de serviço para controle de custos e prazos.</p>
+            </div>
+
+            <!-- Dados da Peça -->
+            <div class="p-6 border-b border-gray-50 bg-gray-50/50 border-t">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-orange-100 p-2 rounded-lg"><i class="fas fa-info-circle text-orange-600"></i></div>
+                    <h2 class="text-lg font-bold text-gray-800">Informações da Peça</h2>
+                </div>
+            </div>
+            <div class="p-8 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Descrição *</label>
+                        {% render_field form.descricao class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 py-3" %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Quantidade *</label>
+                        {% render_field form.quantidade class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 py-3" %}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Quem Fornece? (Para o Orçamento) *</label>
+                        {% render_field form.fornecedor_tipo class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 py-3" %}
+                    </div>
+                    
+                    <!-- Fornecedor do Sistema (Sempre visível para registrar a origem) -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <span x-text="fornecedor_tipo.toLowerCase() === 'escritorio' ? 'Comprado de (Fornecedor)' : 'Origem da Peça'"></span>
+                        </label>
+                        {% render_field form.fornecedor class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 py-3" %}
+                    </div>
+                </div>
+
+                <!-- Nome Manual (Opcional ou backup) -->
+                <div x-show="!fornecedor_id" class="mt-2">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2 text-xs">Ou digite o nome do fornecedor manualmente</label>
+                    {% render_field form.fornecedor_nome class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 py-3 text-sm" %}
+                </div>
+
+                <!-- Valores (Apenas se for Escritório) -->
+                <div x-show="fornecedor_tipo.toLowerCase() === 'escritorio'" x-transition class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-blue-50/50 rounded-xl border border-blue-100">
+                    <div>
+                        <label class="block text-sm font-semibold text-blue-800 mb-2">Valor de Custo (Compra) R$</label>
+                        {% render_field form.valor_custo class="block w-full rounded-xl border-blue-200 bg-white focus:ring-2 focus:ring-blue-500 py-3" %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-blue-800 mb-2">Lucro (%)</label>
+                        {% render_field form.percentual_lucro class="block w-full rounded-xl border-blue-200 bg-white focus:ring-2 focus:ring-blue-500 py-3" %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-blue-800 mb-2">Valor da Peça (Venda) R$</label>
+                        {% render_field form.valor_venda class="block w-full rounded-xl border-blue-200 bg-gray-100 font-bold text-blue-900 py-3" %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prazos -->
+            <div class="p-6 border-b border-gray-50 bg-gray-50/50 border-t">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-purple-100 p-2 rounded-lg"><i class="fas fa-calendar-alt text-purple-600"></i></div>
+                    <h2 class="text-lg font-bold text-gray-800">Prazos e Status</h2>
+                </div>
+            </div>
+            <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Prazo para Compra</label>
+                    {% render_field form.prazo_compra class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 py-3" %}
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Data Efetiva da Compra</label>
+                    {% render_field form.data_compra class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 py-3" %}
+                </div>
+            </div>
+            <div class="p-8 pt-0 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Prazo para Chegada</label>
+                    {% render_field form.prazo_chegada class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 py-3" %}
+                </div>
+                <div class="flex items-end">
+                    <div class="p-4 bg-gray-100 rounded-xl w-full">
+                        <span class="text-xs text-gray-500 uppercase font-bold block mb-1">Status do Sistema</span>
+                        <span class="text-sm font-bold text-gray-700">
+                            {% if peca.id %}
+                                {{ peca.get_status_display }}
+                            {% else %}
+                                Automático pelo sistema
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-8 bg-gray-50 border-t border-gray-100 flex justify-between items-center gap-4">
+                <a href="{% url 'pecas:list' %}" class="px-6 py-3 text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">Cancelar</a>
+                <button type="submit" class="px-8 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md">
+                    <i class="fas fa-save mr-2"></i>Salvar Peça
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

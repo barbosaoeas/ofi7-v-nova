@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}Orçamentos — Oficina System{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Status badges ── */
+  .badge-rascunho  { background: rgba(100,116,139,.18); color:#94a3b8; border:1px solid rgba(148,163,184,.3); }
+  .badge-enviado   { background: rgba(59,130,246,.18);  color:#60a5fa; border:1px solid rgba(96,165,250,.3); }
+  .badge-aprovado  { background: rgba(34,197,94,.18);   color:#4ade80; border:1px solid rgba(74,222,128,.3); }
+  .badge-rejeitado { background: rgba(239,68,68,.18);   color:#f87171; border:1px solid rgba(248,113,113,.3); }
+  .badge-cancelado { background: rgba(107,114,128,.18); color:#9ca3af; border:1px solid rgba(156,163,175,.3); }
+
+  /* ── Filter tabs ── */
+  .filter-tab        { border-bottom: 2px solid transparent; transition: all .2s; }
+  .filter-tab.active { border-color: #3b82f6; color: #60a5fa; }
+  .filter-tab:hover:not(.active) { border-color: rgba(59,130,246,.4); }
+
+  /* ── Table row hover ── */
+  .orc-row { transition: background .15s; }
+  .orc-row:hover { background: rgba(0,0,0,.03); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+
+  <!-- ── Cabeçalho ── -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-100">
+        <i class="fas fa-file-invoice-dollar text-yellow-400 mr-2"></i>Orçamentos
+      </h1>
+      <p class="text-gray-400 text-sm mt-1">Gerencie propostas e aprovações de serviço</p>
+    </div>
+    <a href="{% url 'orcamentos:create' %}"
+       id="btn-novo-orcamento"
+       class="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-semibold px-5 py-2.5 rounded-xl transition shadow-lg shadow-yellow-500/20">
+      <i class="fas fa-plus"></i> Novo Orçamento
+    </a>
+  </div>
+
+  <div class="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mb-6">
+    <div class="flex overflow-x-auto scrollbar-hide px-4 pt-3 gap-2 border-b border-white/10 items-center">
+      <a href="{% url 'orcamentos:list' %}?filtro=aprovados{% if busca %}&q={{ busca }}{% endif %}"
+         class="px-4 py-2 text-sm font-semibold rounded-xl border transition whitespace-nowrap
+                {% if filtro != 'todas' and not status_filtro %}bg-blue-500/20 border-blue-500/30 text-blue-200{% else %}bg-white/5 border-white/15 text-gray-300 hover:bg-white/10{% endif %}">
+        Aprovados
+        <span class="ml-1.5 text-xs bg-white/10 rounded-full px-2 py-0.5">{{ contagens.aprovado }}</span>
+      </a>
+      <a href="{% url 'orcamentos:list' %}?filtro=todas{% if busca %}&q={{ busca }}{% endif %}"
+         class="px-4 py-2 text-sm font-semibold rounded-xl border transition whitespace-nowrap
+                {% if filtro == 'todas' and not status_filtro %}bg-blue-500/20 border-blue-500/30 text-blue-200{% else %}bg-white/5 border-white/15 text-gray-300 hover:bg-white/10{% endif %}">
+        Todas
+        <span class="ml-1.5 text-xs bg-white/10 rounded-full px-2 py-0.5">{{ contagens.todos }}</span>
+      </a>
+
+      {% if status_filtro %}
+      <a href="{% url 'orcamentos:list' %}?filtro={{ filtro }}{% if busca %}&q={{ busca }}{% endif %}"
+         class="ml-auto px-4 py-2 text-sm font-semibold rounded-xl border transition whitespace-nowrap bg-white/5 border-white/15 text-gray-300 hover:bg-white/10">
+        Limpar status
+      </a>
+      {% endif %}
+    </div>
+
+    <!-- Busca -->
+    <div class="p-4">
+      <form method="get" class="flex gap-3">
+        <input type="hidden" name="filtro" value="{{ filtro }}">
+        {% if status_filtro %}<input type="hidden" name="status" value="{{ status_filtro }}">{% endif %}
+        <div class="relative flex-1">
+          <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
+          <input type="text" name="q" value="{{ busca }}"
+                 placeholder="Buscar por número, cliente ou placa..."
+                 class="w-full bg-white/5 border border-white/15 rounded-xl pl-9 pr-4 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-yellow-400/60 focus:ring-1 focus:ring-yellow-400/20">
+        </div>
+        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm transition">
+          Buscar
+        </button>
+        {% if busca %}
+          <a href="{% url 'orcamentos:list' %}?filtro={{ filtro }}{% if status_filtro %}&status={{ status_filtro }}{% endif %}"
+             class="bg-white/10 hover:bg-white/15 text-gray-300 px-4 py-2 rounded-xl text-sm transition">
+            Limpar
+          </a>
+        {% endif %}
+      </form>
+    </div>
+
+    <!-- ── Tabela ── -->
+    {% if orcamentos %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-t border-white/10 text-left bg-gray-50">
+            <th class="px-4 py-3 text-xs text-gray-600 font-semibold uppercase tracking-wider">Número</th>
+            <th class="px-4 py-3 text-xs text-gray-600 font-semibold uppercase tracking-wider">Cliente</th>
+            <th class="px-4 py-3 text-xs text-gray-600 font-semibold uppercase tracking-wider">Veículo</th>
+            <th class="px-4 py-3 text-xs text-gray-600 font-semibold uppercase tracking-wider text-right">Valor Total</th>
+            <th class="px-4 py-3 text-xs text-gray-600 font-semibold uppercase tracking-wider">Data</th>
+            <th class="px-4 py-3 text-xs text-gray-600 font-semibold uppercase tracking-wider">Validade</th>
+            <th class="px-4 py-3 text-xs text-gray-600 font-semibold uppercase tracking-wider">Status</th>
+            <th class="px-4 py-3 text-xs text-gray-600 font-semibold uppercase tracking-wider text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 bg-white">
+          {% for orc in orcamentos %}
+          <tr class="orc-row">
+            <td class="px-4 py-3.5">
+              <a href="{% url 'orcamentos:detail' orc.pk %}"
+                 class="font-mono font-semibold text-yellow-400 hover:text-yellow-300 transition">
+                {{ orc.numero }}
+              </a>
+            </td>
+            <td class="px-4 py-3.5">
+              <span class="text-gray-900 font-medium">{{ orc.cliente.nome }}</span>
+            </td>
+            <td class="px-4 py-3.5">
+              <div class="text-gray-900">
+                {% if orc.veiculo.modelo_veiculo %}
+                  {{ orc.veiculo.modelo_veiculo.fabricante.nome }} {{ orc.veiculo.modelo_veiculo.nome }}
+                {% else %}
+                  {{ orc.veiculo.marca }} {{ orc.veiculo.modelo }}
+                {% endif %}
+              </div>
+              <div class="text-xs text-gray-600 font-mono">{{ orc.veiculo.placa }}</div>
+            </td>
+            <td class="px-4 py-3.5 text-right">
+              <span class="text-gray-900 font-semibold">
+                R$ {{ orc.valor_total_com_desconto|floatformat:2 }}
+              </span>
+              {% if orc.desconto > 0 %}
+                <div class="text-xs text-green-400">-R$ {{ orc.desconto|floatformat:2 }} desconto</div>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3.5 text-gray-600 text-sm">{{ orc.data_orcamento|date:"d/m/Y" }}</td>
+            <td class="px-4 py-3.5">
+              {% if orc.validade %}
+                <span class="text-gray-600 text-sm">{{ orc.validade|date:"d/m/Y" }}</span>
+              {% else %}
+                <span class="text-gray-600 text-sm">—</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3.5">
+              <span class="badge-{{ orc.status }} text-xs font-semibold px-2.5 py-1 rounded-full">
+                {{ orc.get_status_display }}
+              </span>
+            </td>
+            <td class="px-4 py-3.5 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <a href="{% url 'orcamentos:detail' orc.pk %}"
+                   class="p-1.5 text-gray-600 hover:text-yellow-600 transition" title="Ver detalhes">
+                  <i class="fas fa-eye"></i>
+                </a>
+                {% if orc.status in 'rascunho enviado' %}
+                <a href="{% url 'orcamentos:update' orc.pk %}"
+                   class="p-1.5 text-gray-600 hover:text-blue-600 transition" title="Editar">
+                  <i class="fas fa-pen"></i>
+                </a>
+                {% endif %}
+                {% if orc.status == 'rascunho' %}
+                <a href="{% url 'orcamentos:delete' orc.pk %}"
+                   class="p-1.5 text-gray-600 hover:text-red-600 transition" title="Excluir">
+                  <i class="fas fa-trash"></i>
+                </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% else %}
+    <!-- Estado vazio -->
+    <div class="py-20 text-center">
+      <div class="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-file-invoice text-3xl text-gray-600"></i>
+      </div>
+      <p class="text-gray-400 font-medium mb-1">Nenhum orçamento encontrado</p>
+      <p class="text-gray-600 text-sm mb-6">
+        {% if busca or status_filtro %}Tente remover os filtros{% else %}Crie seu primeiro orçamento{% endif %}
+      </p>
+      {% if not busca and not status_filtro %}
+      <a href="{% url 'orcamentos:create' %}"
+         class="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-semibold px-5 py-2 rounded-xl transition text-sm">
+        <i class="fas fa-plus"></i> Criar Orçamento
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div><!-- end card -->
+</div>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ cliente.nome }}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{% url 'clientes:list' %}" class="text-blue-500 hover:text-blue-700">
+        <i class="fas fa-arrow-left mr-2"></i>Voltar para lista
+    </a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Informações do Cliente -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-2xl font-bold text-gray-800">{{ cliente.nome }}</h1>
+                <div class="flex space-x-2">
+                    <a href="{% url 'clientes:update' cliente.pk %}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-edit mr-2"></i>Editar
+                    </a>
+                    <a href="{% url 'clientes:delete' cliente.pk %}" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-trash mr-2"></i>Excluir
+                    </a>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-sm text-gray-600">Tipo</p>
+                    <p class="font-semibold">{{ cliente.get_tipo_display }}</p>
+                </div>
+                
+                <div>
+                    <p class="text-sm text-gray-600">Status</p>
+                    <p class="font-semibold {% if cliente.ativo %}text-green-600{% else %}text-red-600{% endif %}">
+                        {% if cliente.ativo %}Ativo{% else %}Inativo{% endif %}
+                    </p>
+                </div>
+                
+                <div>
+                    <p class="text-sm text-gray-600">CPF/CNPJ</p>
+                    <p class="font-semibold">{{ cliente.cpf_cnpj|default:"-" }}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600">RG/IE</p>
+                    <p class="font-semibold">{{ cliente.rg_ie|default:"-" }}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600">Telefone</p>
+                    <p class="font-semibold">{{ cliente.telefone|default:"-" }}</p>
+                </div>
+                
+                <div>
+                    <p class="text-sm text-gray-600">E-mail</p>
+                    <p class="font-semibold">{{ cliente.email|default:"-" }}</p>
+                </div>
+                
+                {% if cliente.endereco %}
+                <div class="col-span-2 border-t pt-4 mt-2">
+                    <p class="text-sm text-gray-600 mb-2">Endereço</p>
+                    <p class="font-semibold">
+                        {{ cliente.endereco }}, {{ cliente.numero|default:"S/N" }}
+                        {% if cliente.complemento %} - {{ cliente.complemento }}{% endif %}
+                    </p>
+                    <p class="text-gray-700">
+                        {{ cliente.bairro|default:"-" }} - {{ cliente.cidade|default:"-" }}/{{ cliente.estado|default:"-" }}
+                    </p>
+                    <p class="text-gray-600">CEP: {{ cliente.cep|default:"-" }}</p>
+                </div>
+                {% endif %}
+                
+                {% if cliente.observacoes %}
+                <div class="col-span-2 border-t pt-4 mt-2">
+                    <p class="text-sm text-gray-600 mb-2">Observações</p>
+                    <p class="text-gray-700">{{ cliente.observacoes }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Veículos do Cliente -->
+    <div>
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-car mr-2 text-blue-500"></i>Veículos
+            </h2>
+            
+            {% if veiculos %}
+            <div class="space-y-3">
+                {% for veiculo in veiculos %}
+                <div class="border border-gray-200 rounded-lg p-3">
+                    <p class="font-semibold text-gray-800">{{ veiculo.placa }}</p>
+                    <p class="text-sm text-gray-600">{{ veiculo.marca }} {{ veiculo.modelo }}</p>
+                    <p class="text-xs text-gray-500">{{ veiculo.ano_modelo }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-center py-4">Nenhum veículo cadastrado</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

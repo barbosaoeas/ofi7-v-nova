@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Fabricantes{% endblock %}
+
+{% block content %}
+<div class="mb-6 bg-white rounded-lg shadow-sm p-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-3xl font-bold text-gray-800">
+            <i class="fas fa-industry text-gray-500 mr-2"></i>Fabricantes
+        </h1>
+        <a href="{% url 'veiculos:fabricante_create' %}" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-6 py-3 rounded-lg">
+            <i class="fas fa-plus mr-2"></i>Novo Fabricante
+        </a>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for fabricante in fabricantes %}
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-gray-800">{{ fabricante.nome }}</h3>
+            {% if fabricante.ativo %}
+            <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Ativo</span>
+            {% else %}
+            <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Inativo</span>
+            {% endif %}
+        </div>
+        
+        <p class="text-gray-600 mb-4">
+            <i class="fas fa-globe mr-2"></i>{{ fabricante.pais_origem|default:"País não informado" }}
+        </p>
+        
+        <p class="text-sm text-gray-500 mb-4">
+            <i class="fas fa-car-side mr-2"></i>{{ fabricante.modelos.count }} modelo(s)
+        </p>
+        
+        <a href="{% url 'veiculos:fabricante_update' fabricante.pk %}" class="text-blue-600 hover:text-blue-800">
+            <i class="fas fa-edit mr-1"></i>Editar
+        </a>
+    </div>
+    {% empty %}
+    <div class="col-span-3 text-center py-12 text-gray-500">
+        <i class="fas fa-industry text-6xl mb-4"></i>
+        <p>Nenhum fabricante cadastrado</p>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

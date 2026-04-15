@@ -1,0 +1,16 @@
+{% if veiculos %}
+    <option value="">-- Selecione um veículo --</option>
+    {% for v in veiculos %}
+        <option value="{{ v.pk }}" {% if selected_id == v.pk|stringformat:"s" %}selected{% endif %}>
+            {% if v.modelo_veiculo %}{{ v.modelo_veiculo.fabricante.nome }} {{ v.modelo_veiculo.nome }}{% else %}{{ v.marca }} {{ v.modelo }}{% endif %}
+            — {{ v.placa }}
+            {% if v.cor_veiculo %} ({{ v.cor_veiculo.nome }}){% endif %}
+        </option>
+    {% endfor %}
+{% else %}
+    {% if total_cliente|default:0|add:0 > 0 %}
+        <option value="">-- Todos os veículos deste cliente já estão em serviço --</option>
+    {% else %}
+        <option value="">-- Nenhum veículo cadastrado para este cliente --</option>
+    {% endif %}
+{% endif %}

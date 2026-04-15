@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir {{ orcamento.numero }} — Oficina System{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+  <div class="bg-white/5 border border-red-500/20 rounded-2xl overflow-hidden">
+    <!-- Header -->
+    <div class="bg-red-500/10 border-b border-red-500/20 p-6">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 bg-red-500/20 border border-red-500/30 rounded-xl flex items-center justify-center">
+          <i class="fas fa-trash text-red-400 text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-gray-100">Excluir Orçamento</h1>
+          <p class="text-sm text-red-400">Esta ação não pode ser desfeita</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Corpo -->
+    <div class="p-6">
+      <p class="text-gray-300 mb-4">
+        Tem certeza que deseja excluir o orçamento
+        <span class="font-mono font-bold text-yellow-400">{{ orcamento.numero }}</span>
+        do cliente <span class="font-semibold text-gray-100">{{ orcamento.cliente.nome }}</span>?
+      </p>
+
+      <div class="bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-gray-400 mb-6">
+        <div class="flex gap-4">
+          <div>
+            <div class="text-xs text-gray-600 uppercase mb-0.5">Veículo</div>
+            <div class="text-gray-300">{{ orcamento.veiculo }}</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-600 uppercase mb-0.5">Total</div>
+            <div class="text-yellow-400 font-bold">R$ {{ orcamento.valor_total_com_desconto|floatformat:2 }}</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-600 uppercase mb-0.5">Itens</div>
+            <div class="text-gray-300">{{ orcamento.itens.count }} serviço(s)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <a href="{% url 'orcamentos:detail' orcamento.pk %}"
+           class="flex-1 text-center px-4 py-2.5 text-gray-400 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition font-medium text-sm">
+          Cancelar
+        </a>
+        <form method="post" class="flex-1">
+          {% csrf_token %}
+          <button type="submit"
+                  class="w-full px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white border border-red-500 rounded-xl transition font-semibold text-sm">
+            <i class="fas fa-trash mr-2"></i>Excluir Definitivamente
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

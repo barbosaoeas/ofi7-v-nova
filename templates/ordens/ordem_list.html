@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Ordens de Serviço | Oficina{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-8">
+  <div class="mb-8 flex justify-between items-end">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 font-mono tracking-tight">Ordens de Serviço</h1>
+      <p class="mt-2 text-sm text-gray-600">
+        Gerencie e programe a execução de veículos na oficina.
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'ordens:list' %}?filtro=nao_concluidas"
+         class="px-4 py-2 rounded-xl text-sm font-semibold border transition
+                {% if filtro != 'todas' %}bg-blue-600 text-white border-blue-600{% else %}bg-white text-gray-700 border-gray-200 hover:bg-gray-50{% endif %}">
+        Não concluídas
+        <span class="ml-2 text-xs {% if filtro != 'todas' %}bg-white/20{% else %}bg-gray-100{% endif %} px-2 py-0.5 rounded-full">
+          {{ contagens.nao_concluidas }}
+        </span>
+      </a>
+      <a href="{% url 'ordens:list' %}?filtro=todas"
+         class="px-4 py-2 rounded-xl text-sm font-semibold border transition
+                {% if filtro == 'todas' %}bg-blue-600 text-white border-blue-600{% else %}bg-white text-gray-700 border-gray-200 hover:bg-gray-50{% endif %}">
+        Todas
+        <span class="ml-2 text-xs {% if filtro == 'todas' %}bg-white/20{% else %}bg-gray-100{% endif %} px-2 py-0.5 rounded-full">
+          {{ contagens.todas }}
+        </span>
+      </a>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Número da OS</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cliente</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Veículo</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Data de Abertura</th>
+            <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-100">
+          {% for ordem in ordens %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center">
+                <i class="fas fa-tools text-indigo-500 mr-3"></i>
+                <div class="text-sm font-bold text-gray-900 font-mono">{{ ordem.numero }}</div>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm font-medium text-gray-900">{{ ordem.cliente.nome }}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm text-gray-900">{{ ordem.veiculo.modelo_veiculo.nome }}</div>
+              <div class="text-xs text-gray-600 uppercase">{{ ordem.veiculo.placa }}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                {% if ordem.status == 'aberta' %}bg-blue-100 text-blue-800
+                {% elif ordem.status == 'em_andamento' %}bg-indigo-100 text-indigo-800
+                {% elif ordem.status == 'aguardando_peca' %}bg-orange-100 text-orange-800
+                {% elif ordem.status == 'concluida' %}bg-green-100 text-green-800
+                {% elif ordem.status == 'entregue' %}bg-gray-100 text-gray-800
+                {% elif ordem.status == 'cancelada' %}bg-red-100 text-red-800
+                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                {{ ordem.get_status_display }}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+              {{ ordem.data_abertura|date:"d/m/Y" }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              {% if ordem.status == 'concluida' or ordem.status == 'entregue' or ordem.status == 'cancelada' %}
+                <button disabled class="text-gray-400 bg-gray-100 px-3 py-2 rounded-lg cursor-not-allowed opacity-60">
+                  <i class="fas fa-lock mr-1"></i> Programar
+                </button>
+              {% else %}
+                <a href="{% url 'ordens:update' ordem.pk %}" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg transition-colors">
+                  <i class="fas fa-edit mr-1"></i> Programar
+                </a>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+              <i class="fas fa-inbox text-4xl mb-3 text-gray-300 block"></i>
+              Nenhuma Ordem de Serviço encontrada. Aprove orçamentos para gerar ordens automaticamente.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

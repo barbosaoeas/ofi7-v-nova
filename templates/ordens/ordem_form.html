@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+  <div class="mb-8 flex justify-between items-end">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 font-mono tracking-tight">{{ titulo }}</h1>
+      <p class="mt-2 text-sm text-gray-600">
+        Gerencie a execução, responsáveis e horários das etapas associadas.
+      </p>
+    </div>
+    <div class="flex gap-3">
+      <a href="{% url 'orcamentos:detail' ordem.orcamento.pk %}" class="px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+        Voltar
+      </a>
+      <button onclick="document.getElementById('os-form').submit()" class="px-4 py-2 bg-indigo-600 border border-transparent rounded-xl text-sm font-medium text-white hover:bg-indigo-700 transition-colors">
+        Salvar Programação
+      </button>
+    </div>
+  </div>
+
+  {% if chegada_futura %}
+  <div class="mb-6 bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-sm text-yellow-900">
+    <div class="font-semibold">
+      Veículo com chegada prevista para {{ ordem.data_chegada_veiculo|date:'d/m/Y' }}.
+    </div>
+    <div class="text-yellow-800">
+      Você pode programar etapas a partir desta data, mas não é permitido iniciar antes da chegada.
+    </div>
+  </div>
+  {% endif %}
+  {% if ordem.orcamento and ordem.orcamento.status == 'retrabalho' %}
+  <div class="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-900">
+    <div class="font-extrabold flex items-center gap-2">
+      <i class="fas fa-redo"></i> Retrabalho
+    </div>
+    <div class="text-red-800">
+      Esta OS é de retrabalho (prejuízo). Use a programação normalmente, mas sem contabilizar como receita.
+    </div>
+  </div>
+  {% endif %}
+
+  <form id="os-form" method="post" class="space-y-6">
+    {% csrf_token %}
+    
+    <!-- Info Geral da OS -->
+    <div class="bg-white shadow-sm border border-gray-200 rounded-2xl p-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">OS</label>
+          <div class="text-gray-900 font-bold">{{ ordem.numero }}</div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Cliente</label>
+          <div class="text-gray-900">{{ ordem.cliente.nome }}</div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Veículo</label>
+          <div class="text-gray-900">{{ ordem.veiculo.placa }} - {{ ordem.veiculo.modelo_veiculo.nome }}</div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Status da OS</label>
+          {{ form.status }}
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Data de Chegada do Veículo</label>
+          {{ form.data_chegada_veiculo }}
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Previsão de Entrega</label>
+          <div class="text-gray-900">{{ ordem.data_previsao_entrega|date:"d/m/Y"|default:"-" }}</div>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Observações da OS</label>
+        {{ form.observacoes }}
+      </div>
+    </div>
+
+    <!-- Tabela de Etapas (Formset) -->
+    <div class="bg-white shadow-sm border border-gray-200 rounded-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+        <h3 class="text-base font-semibold leading-6 text-gray-900">Programação de Retífica / Serviços</h3>
+        <span class="text-sm text-gray-500">{{ formset.total_form_count }} etapas no processo</span>
+      </div>
+      
+      {{ formset.management_form }}
+      
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Etapa (Serviço)</th>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Responsável/Titular</th>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-64">Auxiliares</th>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Data</th>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Horas Estimadas</th>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Horas Reais</th>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 bg-white">
+            {% for form in formset %}
+            <tr>
+              {% for hidden in form.hidden_fields %}
+                {{ hidden }}
+              {% endfor %}
+              
+              <td class="px-4 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
+                {{ form.instance.nome }}
+                {% if form.instance.descricao %}
+                <div class="text-xs font-normal text-gray-500 mt-1 max-w-xs truncate">{{ form.instance.descricao }}</div>
+                {% endif %}
+              </td>
+              
+              <td class="px-4 py-4 whitespace-nowrap">
+                <div class="w-40">
+                  {{ form.funcionario }}
+                </div>
+              </td>
+              
+              <td class="px-4 py-4">
+                <div class="w-64">
+                  {{ form.auxiliares }}
+                </div>
+              </td>
+              
+              <td class="px-4 py-4 whitespace-nowrap">
+                <div class="w-36">
+                  {{ form.data_programada }}
+                </div>
+              </td>
+              
+              <td class="px-4 py-4 whitespace-nowrap text-center text-sm font-mono text-gray-600 bg-gray-50">
+                {{ form.instance.horas_orcadas|default:"-" }}h
+              </td>
+              
+              <td class="px-4 py-4 whitespace-nowrap">
+                <div class="w-24">
+                  {{ form.horas_gastas_real }}
+                </div>
+              </td>
+              
+              <td class="px-4 py-4 whitespace-nowrap">
+                <div class="w-40">
+                  {{ form.status }}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar os múltiplos selects de auxiliares usando TomSelect
+    document.querySelectorAll('.tom-select-multiple').forEach((el) => {
+      new TomSelect(el, {
+        plugins: ['remove_button'],
+        maxItems: 5,
+        create: false,
+        placeholder: "Assistentes..."
+      });
+    });
+  });
+</script>
+<style>
+  /* Customizando o Tom Select para bater com o Design Bento Light */
+  .ts-control { border-color: #d1d5db !important; border-radius: 0.5rem !important; padding: 0.375rem 0.5rem !important; background-color: #fff !important; }
+  .ts-dropdown { border-color: #d1d5db !important; border-radius: 0.5rem !important; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important; }
+  .ts-control .item { background: #f3f4f6 !important; color: #111827 !important; border: 1px solid #e5e7eb !important; border-radius: 9999px !important; }
+</style>
+{% endblock %}

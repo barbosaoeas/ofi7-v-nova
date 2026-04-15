@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}{{ veiculo.placa }}{% endblock %}
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6">
+    <h1 class="text-2xl font-bold mb-4">{{ veiculo.descricao_completa }}</h1>
+    <p><strong>Cliente:</strong> {{ veiculo.cliente.nome }}</p>
+    <p><strong>Placa:</strong> {{ veiculo.placa }}</p>
+    <p><strong>Cor:</strong> {{ veiculo.cor_display }}</p>
+    <p><strong>Ano:</strong> {{ veiculo.ano_modelo }}</p>
+    <div class="mt-6">
+        <a href="{% url 'veiculos:list' %}" class="text-blue-600">← Voltar</a>
+    </div>
+</div>
+{% endblock %}

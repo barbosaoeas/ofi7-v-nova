@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard | Oficina{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6">
+
+  <!-- Header + Filtro de Período -->
+  <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
+      <p class="text-sm text-gray-500 mt-1">
+        Bem-vindo(a), <strong>{{ user.get_full_name|default:user.username }}</strong> —
+        <span class="text-indigo-600 font-semibold">{{ label_periodo }}</span>
+      </p>
+    </div>
+
+    <!-- Seletor de Período -->
+    <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
+      <a href="?periodo=mes_atual"
+         class="px-4 py-2 rounded-lg text-sm font-semibold transition-all
+                {% if periodo == 'mes_atual' %}bg-indigo-600 text-white shadow{% else %}text-gray-500 hover:bg-gray-100{% endif %}">
+        Mês Atual
+      </a>
+      <a href="?periodo=mes_anterior"
+         class="px-4 py-2 rounded-lg text-sm font-semibold transition-all
+                {% if periodo == 'mes_anterior' %}bg-indigo-600 text-white shadow{% else %}text-gray-500 hover:bg-gray-100{% endif %}">
+        Mês Anterior
+      </a>
+      <a href="?periodo=anual"
+         class="px-4 py-2 rounded-lg text-sm font-semibold transition-all
+                {% if periodo == 'anual' %}bg-indigo-600 text-white shadow{% else %}text-gray-500 hover:bg-gray-100{% endif %}">
+        Acumulado Anual
+      </a>
+    </div>
+  </div>
+
+  <div class="mb-6 bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+    <div class="text-sm font-extrabold text-indigo-900">
+      Valor acumulado no período (veículos entregues)
+    </div>
+    <div class="text-xl font-black text-indigo-700">
+      R$ {{ faturamento_entregue_periodo|floatformat:2 }}
+    </div>
+  </div>
+
+  <!-- ──────────────────── LINHA 1: KPIs DO PERÍODO ──────────────────── -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+    <!-- Orçamentos Aprovados -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+      <div class="flex justify-between items-start mb-3">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Aprovados</p>
+        <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+          <i class="fas fa-check text-green-600 text-xs"></i>
+        </div>
+      </div>
+      <p class="text-3xl font-black text-gray-900">{{ orcamentos_aprovados }}</p>
+      <p class="text-xs text-gray-400 mt-1">de {{ total_orcamentos }} orçamentos no período</p>
+      <div class="mt-3 text-sm font-bold text-green-600">
+        R$ {{ valor_aprovado|floatformat:2 }}
+      </div>
+    </div>
+
+    <!-- Retrabalho / Prejuízo -->
+    <div class="bg-white rounded-2xl shadow-sm border border-red-100 p-5">
+      <div class="flex justify-between items-start mb-3">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Retrabalho</p>
+        <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+          <i class="fas fa-redo text-red-500 text-xs"></i>
+        </div>
+      </div>
+      <p class="text-3xl font-black text-red-600">{{ orcamentos_retrabalho }}</p>
+      <p class="text-xs text-gray-400 mt-1">ocorrências no período</p>
+      <div class="mt-3 text-sm font-bold text-red-500">
+        Perda: R$ {{ perda_retrabalho|floatformat:2 }}
+      </div>
+    </div>
+
+    <!-- OS Concluídas no Período -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+      <div class="flex justify-between items-start mb-3">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">OS Entregues</p>
+        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+          <i class="fas fa-flag-checkered text-blue-600 text-xs"></i>
+        </div>
+      </div>
+      <p class="text-3xl font-black text-gray-900">{{ os_concluidas_periodo }}</p>
+      <p class="text-xs text-gray-400 mt-1">entregas no período</p>
+    </div>
+
+    <!-- Comissões -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+      <div class="flex justify-between items-start mb-3">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Comissões</p>
+        <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+          <i class="fas fa-hand-holding-usd text-purple-600 text-xs"></i>
+        </div>
+      </div>
+      <p class="text-3xl font-black text-gray-900">R$ {{ comissoes_periodo|floatformat:0 }}</p>
+      <p class="text-xs text-gray-400 mt-1">geradas no período</p>
+    </div>
+
+  </div>
+
+  <!-- ──────────────────── LINHA 2: SITUAÇÃO ATUAL DA OFICINA ──────────────────── -->
+  <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Situação Atual da Oficina</h2>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+    <!-- No Pátio (aguardando programação) -->
+    <div class="bg-gray-50 rounded-2xl border border-gray-200 p-5">
+      <div class="flex justify-between items-start mb-2">
+        <p class="text-xs font-semibold text-gray-400 uppercase">No Pátio</p>
+        <i class="fas fa-parking text-gray-400 text-sm"></i>
+      </div>
+      <p class="text-3xl font-black text-gray-700">{{ etapas_no_patio }}</p>
+      <p class="text-xs text-gray-400 mt-1">aguardando programação</p>
+    </div>
+
+    <!-- Em Andamento -->
+    <div class="bg-blue-50 rounded-2xl border border-blue-200 p-5">
+      <div class="flex justify-between items-start mb-2">
+        <p class="text-xs font-semibold text-blue-400 uppercase">Em Execução</p>
+        <i class="fas fa-wrench text-blue-400 text-sm animate-spin" style="animation-duration:3s"></i>
+      </div>
+      <p class="text-3xl font-black text-blue-700">{{ etapas_em_andamento }}</p>
+      <p class="text-xs text-blue-400 mt-1">etapas sendo executadas agora</p>
+    </div>
+
+    <!-- Aguardando Peça -->
+    <div class="bg-orange-50 rounded-2xl border border-orange-200 p-5">
+      <div class="flex justify-between items-start mb-2">
+        <p class="text-xs font-semibold text-orange-400 uppercase">Aguard. Peça</p>
+        <i class="fas fa-box text-orange-400 text-sm"></i>
+      </div>
+      <p class="text-3xl font-black text-orange-700">{{ etapas_aguardando_peca }}</p>
+      <p class="text-xs text-orange-400 mt-1">etapas bloqueadas por peça</p>
+    </div>
+
+    <!-- Indicadores Gerais -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <div class="flex justify-between items-start mb-2">
+        <p class="text-xs font-semibold text-gray-400 uppercase">Cadastros</p>
+        <i class="fas fa-database text-gray-300 text-sm"></i>
+      </div>
+      <div class="flex gap-4">
+        <div>
+          <p class="text-xl font-black text-gray-700">{{ total_clientes }}</p>
+          <p class="text-xs text-gray-400">Clientes</p>
+        </div>
+        <div class="w-px bg-gray-200"></div>
+        <div>
+          <p class="text-xl font-black text-gray-700">{{ total_veiculos }}</p>
+          <p class="text-xs text-gray-400">Veículos</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ──────────────────── LINHA 3: BARRA DE PROGRESSO (OS) ──────────────────── -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider">
+        <i class="fas fa-clipboard-list text-indigo-400 mr-2"></i>Status das Ordens de Serviço
+      </h3>
+      <span class="text-xs text-gray-400">Situação geral em tempo real</span>
+    </div>
+    <div class="grid grid-cols-3 gap-6">
+      <div class="text-center">
+        <p class="text-4xl font-black text-yellow-500">{{ os_abertas }}</p>
+        <p class="text-xs text-gray-500 mt-1 font-medium">Abertas</p>
+        <div class="mt-2 h-1.5 bg-yellow-100 rounded-full"><div class="h-1.5 bg-yellow-400 rounded-full" style="width: 100%"></div></div>
+      </div>
+      <div class="text-center">
+        <p class="text-4xl font-black text-blue-600">{{ os_em_andamento }}</p>
+        <p class="text-xs text-gray-500 mt-1 font-medium">Em Andamento</p>
+        <div class="mt-2 h-1.5 bg-blue-100 rounded-full"><div class="h-1.5 bg-blue-500 rounded-full" style="width: 100%"></div></div>
+      </div>
+      <div class="text-center">
+        <p class="text-4xl font-black text-green-600">{{ os_concluidas_periodo }}</p>
+        <p class="text-xs text-gray-500 mt-1 font-medium">Entregues (período)</p>
+        <div class="mt-2 h-1.5 bg-green-100 rounded-full"><div class="h-1.5 bg-green-500 rounded-full" style="width: 100%"></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

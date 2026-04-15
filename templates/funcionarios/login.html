@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrar — Oficina System</title>
+
+    <!-- Tailwind CSS -->
+    <script>
+        // Configurar Tailwind ANTES de carregar para evitar flash
+        window.tailwind = window.tailwind || {};
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: {} }
+        }
+    </script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%) !important;
+            min-height: 100vh;
+            color: white;
+        }
+
+        /* Partículas de fundo */
+        .bg-grid {
+            background-image:
+                linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        /* Card de usuário */
+        .user-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .user-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(59,130,246,0.15), transparent);
+            opacity: 0;
+            transition: opacity 0.25s;
+        }
+        .user-card:hover::before { opacity: 1; }
+        .user-card:hover {
+            transform: translateY(-4px) scale(1.03);
+            border-color: #3b82f6 !important;
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.3);
+        }
+        .user-card.selected {
+            border-color: #3b82f6 !important;
+            background: rgba(59, 130, 246, 0.15) !important;
+            box-shadow: 0 0 0 2px #3b82f6, 0 8px 30px rgba(59, 130, 246, 0.4);
+            transform: translateY(-4px) scale(1.03);
+        }
+        .user-card.selected::before { opacity: 1; }
+
+        /* Avatar cores por perfil */
+        .avatar-operacional  { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .avatar-supervisor   { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+        .avatar-gerente      { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .avatar-admin        { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+        .avatar-orcamentista { background: linear-gradient(135deg, #10b981, #059669); }
+        .avatar-financeiro   { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+        .avatar-default      { background: linear-gradient(135deg, #6b7280, #4b5563); }
+
+        /* Badge de perfil */
+        .badge-operacional  { color: #93c5fd; border-color: #3b82f6; }
+        .badge-supervisor   { color: #c4b5fd; border-color: #8b5cf6; }
+        .badge-gerente      { color: #fcd34d; border-color: #f59e0b; }
+        .badge-admin        { color: #fca5a5; border-color: #ef4444; }
+        .badge-orcamentista { color: #6ee7b7; border-color: #10b981; }
+        .badge-financeiro   { color: #67e8f9; border-color: #06b6d4; }
+
+        /* Painel de senha */
+        .password-panel {
+            animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Input de senha */
+        .senha-input {
+            background: rgba(255,255,255,0.08);
+            border: 1.5px solid rgba(255,255,255,0.12);
+            color: white;
+            transition: all 0.2s;
+        }
+        .senha-input:focus {
+            background: rgba(255,255,255,0.12);
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+            outline: none;
+        }
+        .senha-input::placeholder { color: rgba(255,255,255,0.35); }
+
+        /* Botão de entrar */
+        .btn-entrar {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-entrar::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .btn-entrar:hover::after { opacity: 1; }
+        .btn-entrar:hover { box-shadow: 0 4px 20px rgba(59,130,246,0.5); transform: translateY(-1px); }
+        .btn-entrar:active { transform: translateY(0); }
+
+        /* Loader */
+        .btn-entrar.loading { pointer-events: none; opacity: 0.7; }
+
+        /* Scroll dos cards */
+        .users-grid {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(59,130,246,0.4) transparent;
+        }
+        .users-grid::-webkit-scrollbar { width: 4px; }
+        .users-grid::-webkit-scrollbar-track { background: transparent; }
+        .users-grid::-webkit-scrollbar-thumb { background: rgba(59,130,246,0.4); border-radius: 99px; }
+
+        /* Glassmorphism card principal */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Pulsando no selected check */
+        @keyframes pulse-ring {
+            0%  { transform: scale(1); opacity: 0.8; }
+            100%{ transform: scale(1.6); opacity: 0; }
+        }
+        .pulse-ring {
+            animation: pulse-ring 1.2s ease-out infinite;
+        }
+
+        /* Shake na senha errada */
+        @keyframes shake {
+            0%,100%{ transform: translateX(0); }
+            20%    { transform: translateX(-8px); }
+            40%    { transform: translateX(8px); }
+            60%    { transform: translateX(-6px); }
+            80%    { transform: translateX(6px); }
+        }
+        .shake { animation: shake 0.4s ease; }
+    </style>
+</head>
+<body class="bg-grid flex items-center justify-center min-h-screen p-4">
+
+    <!-- Blobs decorativos -->
+    <div class="fixed top-0 left-0 w-[600px] h-[600px] rounded-full opacity-10 pointer-events-none"
+         style="background: radial-gradient(circle, #3b82f6, transparent 70%); transform: translate(-30%, -30%);"></div>
+    <div class="fixed bottom-0 right-0 w-[500px] h-[500px] rounded-full opacity-10 pointer-events-none"
+         style="background: radial-gradient(circle, #8b5cf6, transparent 70%); transform: translate(30%, 30%);"></div>
+
+    <div class="w-full max-w-2xl">
+
+        <!-- Logo / Título -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 bg-opacity-20 border border-blue-500 border-opacity-30 mb-4 shadow-lg"
+                 style="box-shadow: 0 0 40px rgba(59,130,246,0.3)">
+                <i class="fas fa-car-side text-3xl text-blue-400"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-white tracking-tight">Oficina System</h1>
+            <p class="text-blue-300 text-sm mt-1 opacity-80">Gestão de Produção</p>
+        </div>
+
+        <!-- Card principal -->
+        <div class="glass-card rounded-3xl p-8 shadow-2xl">
+
+            <!-- Mensagens de erro -->
+            {% if messages %}
+            <div id="msg-area" class="mb-6">
+                {% for message in messages %}
+                <div class="flex items-center gap-3 bg-red-500 bg-opacity-15 border border-red-500 border-opacity-30 text-red-300 px-4 py-3 rounded-xl text-sm">
+                    <i class="fas fa-triangle-exclamation text-red-400"></i>
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- PASSO 1: Selecionar Usuário -->
+            <div id="step-usuario">
+                <p class="text-gray-400 text-sm mb-5 text-center">
+                    <i class="fas fa-hand-pointer mr-1 text-blue-400"></i>
+                    Quem está entrando?
+                </p>
+
+                {% if usuarios %}
+                <div class="users-grid grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-72 overflow-y-auto pr-1"
+                     id="users-grid">
+                    {% for usuario in usuarios %}
+                    <div class="user-card glass-card rounded-2xl p-4 text-center border border-white border-opacity-5"
+                         data-username="{{ usuario.username }}"
+                         data-nome="{{ usuario.nome }}"
+                         data-iniciais="{{ usuario.iniciais }}"
+                         data-perfil="{{ usuario.perfil }}"
+                         onclick="selecionarUsuario(this)">
+
+                        <!-- Avatar -->
+                        <div class="relative mx-auto mb-3" style="width: fit-content;">
+                            <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg avatar-{{ usuario.perfil }} avatar-default"
+                                 id="avatar-{{ usuario.id }}">
+                                {{ usuario.iniciais }}
+                            </div>
+                            <!-- Indicador de selecionado -->
+                            <div class="check-indicator absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full items-center justify-center hidden shadow"
+                                 id="check-{{ usuario.id }}">
+                                <i class="fas fa-check text-white text-xs"></i>
+                            </div>
+                        </div>
+
+                        <!-- Nome -->
+                        <p class="text-white text-sm font-semibold leading-tight truncate">{{ usuario.nome }}</p>
+
+                        <!-- Badge perfil -->
+                        <span class="inline-block mt-1 text-xs px-2 py-0.5 rounded-full border badge-{{ usuario.perfil }} border-opacity-50"
+                              style="font-size: 10px;">
+                            {{ usuario.perfil_display }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-users-slash text-4xl mb-3 block opacity-40"></i>
+                    <p>Nenhum usuário ativo encontrado.</p>
+                    <p class="text-xs mt-1">Acesse o <a href="/admin/" class="text-blue-400 underline">admin</a> para cadastrar funcionários.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- PASSO 2: Digitar Senha (oculto inicialmente) -->
+            <div id="step-senha" class="hidden">
+                <form id="form-login" method="post" action="{% url 'funcionarios:autenticar' %}" autocomplete="off">
+                    {% csrf_token %}
+                    <input type="hidden" name="username" id="hidden-username">
+                    <input type="hidden" name="next" value="{{ request.GET.next }}">
+
+                    <!-- Usuário selecionado (resumo) -->
+                    <div class="flex items-center gap-4 mb-6 p-4 rounded-2xl"
+                         style="background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2);">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-lg flex-shrink-0"
+                             id="mini-avatar" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-white font-semibold" id="nome-selecionado"></p>
+                            <p class="text-blue-400 text-xs" id="perfil-selecionado"></p>
+                        </div>
+                        <button type="button" onclick="voltarSelecao()"
+                                class="text-gray-500 hover:text-white transition-colors text-sm flex items-center gap-1">
+                            <i class="fas fa-arrow-left text-xs"></i>
+                            Trocar
+                        </button>
+                    </div>
+
+                    <!-- Campo Senha -->
+                    <div class="relative mb-5">
+                        <label class="block text-gray-400 text-xs font-medium mb-2 uppercase tracking-wide">
+                            <i class="fas fa-lock mr-1 text-blue-400"></i> Senha
+                        </label>
+                        <div class="relative">
+                            <input type="password"
+                                   id="campo-senha"
+                                   name="password"
+                                   class="senha-input w-full rounded-xl px-4 py-3.5 text-sm pr-12 text-white"
+                                   placeholder="Digite sua senha..."
+                                   autocomplete="current-password"
+                                   required
+                                   autofocus>
+                            <button type="button"
+                                    onclick="toggleSenha()"
+                                    class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors">
+                                <i class="fas fa-eye" id="ico-olho"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Botão Entrar -->
+                    <button type="submit" id="btn-entrar"
+                            class="btn-entrar w-full py-3.5 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg">
+                        <i class="fas fa-arrow-right-to-bracket"></i>
+                        Entrar
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Rodapé -->
+        <p class="text-center text-gray-600 text-xs mt-6">
+            &copy; 2026 Oficina System &nbsp;·&nbsp;
+            <a href="/admin/" class="hover:text-gray-400 transition-colors">Painel Admin</a>
+        </p>
+    </div>
+
+    <script>
+        // Dados dos usuários (para uso no JS)
+        const perfisLabel = {
+            'operacional':  'Operacional',
+            'supervisor':   'Supervisor',
+            'gerente':      'Gerente',
+            'admin':        'Administrador',
+            'orcamentista': 'Orçamentista',
+            'financeiro':   'Financeiro',
+        };
+
+        const avatarGradients = {
+            'operacional':  'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+            'supervisor':   'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+            'gerente':      'linear-gradient(135deg, #f59e0b, #d97706)',
+            'admin':        'linear-gradient(135deg, #ef4444, #b91c1c)',
+            'orcamentista': 'linear-gradient(135deg, #10b981, #059669)',
+            'financeiro':   'linear-gradient(135deg, #06b6d4, #0891b2)',
+        };
+
+        let usuarioSelecionado = null;
+
+        function selecionarUsuario(card) {
+            // Remove seleção anterior
+            document.querySelectorAll('.user-card').forEach(c => {
+                c.classList.remove('selected');
+                // Esconde check
+                const id = c.dataset.username;
+                const check = c.querySelector('.check-indicator');
+                if (check) check.classList.add('hidden');
+            });
+
+            // Seleciona este card
+            card.classList.add('selected');
+            const check = card.querySelector('.check-indicator');
+            if (check) {
+                check.classList.remove('hidden');
+                check.classList.add('flex');
+            }
+
+            usuarioSelecionado = {
+                username: card.dataset.username,
+                nome:     card.dataset.nome,
+                iniciais: card.dataset.iniciais,
+                perfil:   card.dataset.perfil,
+            };
+
+            // Pequeno delay para feedback visual
+            setTimeout(() => avancarParaSenha(), 200);
+        }
+
+        function avancarParaSenha() {
+            const u = usuarioSelecionado;
+            if (!u) return;
+
+            // Preenche dados no passo 2
+            document.getElementById('hidden-username').value = u.username;
+            document.getElementById('nome-selecionado').textContent = u.nome;
+            document.getElementById('perfil-selecionado').textContent = perfisLabel[u.perfil] || u.perfil;
+            document.getElementById('mini-avatar').textContent = u.iniciais;
+            document.getElementById('mini-avatar').style.background = avatarGradients[u.perfil] || 'linear-gradient(135deg, #6b7280, #4b5563)';
+
+            // Mostra/oculta passos com animação
+            document.getElementById('step-usuario').classList.add('hidden');
+            const stepSenha = document.getElementById('step-senha');
+            stepSenha.classList.remove('hidden');
+            stepSenha.classList.add('password-panel');
+
+            // Foca no campo de senha
+            setTimeout(() => {
+                document.getElementById('campo-senha').focus();
+            }, 50);
+        }
+
+        function voltarSelecao() {
+            document.getElementById('step-senha').classList.add('hidden');
+            document.getElementById('step-usuario').classList.remove('hidden');
+            document.getElementById('campo-senha').value = '';
+            usuarioSelecionado = null;
+
+            // Remove seleções
+            document.querySelectorAll('.user-card').forEach(c => {
+                c.classList.remove('selected');
+                const check = c.querySelector('.check-indicator');
+                if (check) { check.classList.add('hidden'); check.classList.remove('flex'); }
+            });
+        }
+
+        function toggleSenha() {
+            const input = document.getElementById('campo-senha');
+            const ico = document.getElementById('ico-olho');
+            if (input.type === 'password') {
+                input.type = 'text';
+                ico.className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                ico.className = 'fas fa-eye';
+            }
+        }
+
+        // Submit com loading
+        document.getElementById('form-login')?.addEventListener('submit', function(e) {
+            const btn = document.getElementById('btn-entrar');
+            btn.classList.add('loading');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+        });
+
+        // Enter no campo senha submete
+        document.getElementById('campo-senha')?.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('form-login').submit();
+            }
+        });
+
+        // Se há mensagem de erro, já volta para o passo 2 se havia usuário
+        {% if messages %}
+        // Mantém na tela de seleção para o usuário tentar novamente
+        {% endif %}
+
+        // Auto-fechar mensagens após 4s
+        setTimeout(() => {
+            const msgArea = document.getElementById('msg-area');
+            if (msgArea) {
+                msgArea.style.transition = 'all 0.4s';
+                msgArea.style.opacity = '0';
+                msgArea.style.maxHeight = '0';
+                setTimeout(() => msgArea.remove(), 400);
+            }
+        }, 4000);
+    </script>
+</body>
+</html>

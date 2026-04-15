@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Veículos{% endblock %}
+
+{% block content %}
+<div class="mb-6 bg-white rounded-lg shadow-sm p-6">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">
+                <i class="fas fa-car text-green-500 mr-2"></i>Veículos
+            </h1>
+            <p class="text-gray-600 mt-1">Gerenciamento de veículos</p>
+        </div>
+        <div class="flex space-x-2">
+            <a href="{% url 'veiculos:fabricante_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-4 py-3 rounded-lg text-sm">
+                <i class="fas fa-industry mr-2"></i>Fabricantes
+            </a>
+            <a href="{% url 'veiculos:modelo_list' %}" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-4 py-3 rounded-lg text-sm">
+                <i class="fas fa-car-side mr-2"></i>Modelos
+            </a>
+            <a href="{% url 'veiculos:create' %}" class="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-3 rounded-lg">
+                <i class="fas fa-plus mr-2"></i>Novo Veículo
+            </a>
+        </div>
+    </div>
+    
+    <form method="get" class="flex gap-2">
+        <input type="text" name="q" value="{{ query }}" 
+               placeholder="Buscar por placa, cliente, modelo..."
+               class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+        <button type="submit" class="bg-gray-700 hover:bg-gray-800 text-white px-6 py-2 rounded-lg">
+            <i class="fas fa-search mr-2"></i>Buscar
+        </button>
+        <a href="{% url 'veiculos:list' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg">
+            <i class="fas fa-times"></i>
+        </a>
+    </form>
+</div>
+
+<div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">Foto</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Placa</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Veículo</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cliente</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ano</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cor</th>
+                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-100">
+            {% for veiculo in veiculos %}
+            <tr class="hover:bg-gray-50 transition-colors">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    {% if veiculo.foto_principal %}
+                        <img src="{{ veiculo.foto_principal.url }}" alt="Foto do veículo" class="w-24 h-14 object-cover rounded-md shadow-sm border border-gray-200">
+                    {% else %}
+                        <div class="w-24 h-14 bg-gray-100 rounded-md flex items-center justify-center border border-gray-200 text-gray-400" title="Sem foto">
+                            <i class="fas fa-camera text-gray-300"></i>
+                        </div>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="font-bold text-gray-900">{{ veiculo.placa }}</div>
+                </td>
+                <td class="px-6 py-4">
+                    {% if veiculo.modelo_veiculo %}
+                    <div class="font-medium text-gray-900">{{ veiculo.modelo_veiculo.fabricante.nome }} {{ veiculo.modelo_veiculo.nome }}</div>
+                    <div class="text-sm text-gray-500">{{ veiculo.modelo_veiculo.get_categoria_display }}</div>
+                    {% else %}
+                    <div class="font-medium text-gray-900">{{ veiculo.marca }} {{ veiculo.modelo }}</div>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-gray-900">{{ veiculo.cliente.nome }}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    {{ veiculo.ano_modelo|default:"-" }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    {% if veiculo.cor_veiculo %}
+                        <div class="flex items-center">
+                            {% if veiculo.cor_veiculo.codigo_hex %}
+                            <span class="w-3 h-3 rounded-full mr-2 border border-gray-200" style="background-color: {{ veiculo.cor_veiculo.codigo_hex }}"></span>
+                            {% endif %}
+                            <span>{{ veiculo.cor_veiculo.nome }}</span>
+                        </div>
+                    {% else %}
+                        {{ veiculo.cor|default:"-" }}
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                    <a href="{% url 'veiculos:detail' veiculo.pk %}" class="text-blue-600 hover:text-blue-900 mr-3">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    <a href="{% url 'veiculos:update' veiculo.pk %}" class="text-green-600 hover:text-green-900 mr-3">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="{% url 'veiculos:delete' veiculo.pk %}" class="text-red-600 hover:text-red-900">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                    <i class="fas fa-car text-4xl mb-2 block"></i>
+                    <p>Nenhum veículo encontrado</p>
+                    <a href="{% url 'veiculos:create' %}" class="text-green-600 hover:text-green-800 mt-2 inline-block">
+                        <i class="fas fa-plus mr-1"></i>Cadastrar primeiro veículo
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if veiculos.has_other_pages %}
+<div class="mt-6 flex justify-center">
+    <nav class="flex space-x-2">
+        {% if veiculos.has_previous %}
+        <a href="?page={{ veiculos.previous_page_number }}&q={{ query }}" 
+           class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Anterior</a>
+        {% endif %}
+        
+        <span class="px-4 py-2 bg-green-500 text-white rounded-lg">
+            Página {{ veiculos.number }} de {{ veiculos.paginator.num_pages }}
+        </span>
+        
+        {% if veiculos.has_next %}
+        <a href="?page={{ veiculos.next_page_number }}&q={{ query }}" 
+           class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Próxima</a>
+        {% endif %}
+    </nav>
+</div>
+{% endif %}
+
+{% endblock %}

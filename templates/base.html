@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Gestão - Oficina{% endblock %}</title>
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Alpine.js com Mask plugin -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/mask@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50">
+    
+    <!-- Navbar -->
+    <nav class="text-white shadow-lg" style="background-color: {{ sistema_config.cor_primaria|default:'#2563EB' }};">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    {% if sistema_config and sistema_config.logo %}
+                      <img src="{{ sistema_config.logo.url }}" alt="Logo" class="h-9 w-9 rounded bg-white/90 object-contain">
+                    {% else %}
+                      <i class="fas fa-car text-2xl"></i>
+                    {% endif %}
+                    <span class="text-xl font-bold">{{ sistema_config.nome_empresa|default:"Oficina System" }}</span>
+                </div>
+                
+                <!-- Menu -->
+                <div class="hidden md:flex items-center space-x-6">
+
+                  {% if user.is_superuser or user.perfil == 'admin' or user.perfil == 'gerente' or user.perfil == 'supervisor' %}
+                  <!-- ── NAV GESTORES ── -->
+                  <a href="{% url 'dashboard:index' %}" class="hover:text-blue-200">
+                      <i class="fas fa-home mr-2"></i>Dashboard
+                  </a>
+                  <a href="{% url 'orcamentos:list' %}" class="hover:text-blue-200">
+                      <i class="fas fa-file-invoice-dollar mr-2"></i>Orçamentos
+                  </a>
+                  <a href="{% url 'ordens:list' %}" class="hover:text-blue-200">
+                      <i class="fas fa-tools mr-2"></i>Ordens
+                  </a>
+                  <a href="{% url 'kanban:producao' %}" class="hover:text-blue-200">
+                      <i class="fas fa-tasks mr-2"></i>Kanban
+                  </a>
+                  <a href="{% url 'kanban:agenda' %}" class="hover:text-blue-200">
+                      <i class="fas fa-calendar-alt mr-2"></i>Agenda
+                  </a>
+                  <a href="{% url 'kanban:agenda_mao_obra' %}" class="hover:text-blue-200">
+                      <i class="fas fa-user-clock mr-2"></i>Mão de Obra
+                  </a>
+
+                  <!-- Dropdown Cadastros (gestores) -->
+                  <div x-data="{ open: false }" class="relative">
+                      <button @click="open = !open" class="flex items-center hover:text-blue-200">
+                          <i class="fas fa-folder-open mr-2"></i>Cadastros
+                          <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                      </button>
+                      <div x-show="open" @click.away="open = false" x-cloak
+                           class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg py-2 z-50">
+                          <a href="{% url 'clientes:list' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                              <i class="fas fa-users mr-2 text-blue-500"></i>Clientes
+                          </a>
+                          <a href="{% url 'veiculos:list' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                              <i class="fas fa-car mr-2 text-green-500"></i>Veículos
+                          </a>
+                          <hr class="my-2">
+                          <a href="{% url 'veiculos:fabricante_list' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 text-sm">
+                              <i class="fas fa-industry mr-2 text-gray-500"></i>Fabricantes
+                          </a>
+                          <a href="{% url 'veiculos:modelo_list' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 text-sm">
+                              <i class="fas fa-car-side mr-2 text-gray-500"></i>Modelos
+                          </a>
+                          <hr class="my-2">
+                          <a href="{% url 'funcionarios:list' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                              <i class="fas fa-user-tie mr-2 text-purple-500"></i>Funcionários
+                          </a>
+                          <a href="{% url 'orcamentos:etapa_list' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                              <i class="fas fa-layer-group mr-2 text-indigo-500"></i>Etapas Padrão
+                          </a>
+                          <a href="{% url 'pecas:list' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                              <i class="fas fa-box mr-2 text-orange-500"></i>Peças
+                          </a>
+                      </div>
+                  </div>
+
+                  <!-- Dropdown Relatórios (gestores) -->
+                  <div x-data="{ open: false }" class="relative">
+                      <button @click="open = !open" class="flex items-center hover:text-blue-200">
+                          <i class="fas fa-chart-line mr-2"></i>Relatórios
+                          <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                      </button>
+                      <div x-show="open" @click.away="open = false" x-cloak
+                           class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg py-2 z-50">
+                          <a href="{% url 'relatorios_comissoes' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                              <i class="fas fa-coins mr-2 text-yellow-500"></i>Comissões
+                          </a>
+                      </div>
+                  </div>
+
+                  {% else %}
+                  <!-- ── NAV OPERACIONAL ── -->
+                  <a href="{% url 'kanban:minhas_tarefas' %}" class="hover:text-blue-200 font-semibold">
+                      <i class="fas fa-clipboard-check mr-2"></i>Minhas Tarefas
+                  </a>
+                  <a href="{% url 'kanban:producao' %}" class="hover:text-blue-200">
+                      <i class="fas fa-tasks mr-2"></i>Kanban
+                  </a>
+                  {% endif %}
+
+                </div>
+                
+                <!-- User Menu -->
+                <div x-data="{ open: false }" class="relative">
+                    <button @click="open = !open" class="flex items-center space-x-2 hover:text-blue-200">
+                        <i class="fas fa-user-circle text-2xl"></i>
+                        <span>{{ user.get_full_name|default:user.username }}</span>
+                        <i class="fas fa-chevron-down text-sm"></i>
+                    </button>
+                    
+                    <div x-show="open" @click.away="open = false" x-cloak
+                         class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                        <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                            <i class="fas fa-user mr-2"></i>Meu Perfil
+                        </a>
+                        {% if user.is_superuser or user.perfil == 'admin' %}
+                        <a href="{% url 'dashboard:configuracao_sistema' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                            <i class="fas fa-sliders-h mr-2"></i>Configurações
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'admin:index' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                            <i class="fas fa-cog mr-2"></i>Admin
+                        </a>
+                        <hr class="my-1">
+                        <a href="{% url 'funcionarios:logout' %}" class="block px-4 py-2 text-red-600 hover:bg-gray-100">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Sair
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <main class="{% block main_class %}container mx-auto px-4 py-6{% endblock %}">
+        <!-- Mensagens -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div x-data="{ show: true }" 
+                 x-show="show" 
+                 x-init="setTimeout(() => show = false, 10000)"
+                 x-transition.duration.500ms
+                 class="bg-{% if message.tags == 'error' %}red{% elif message.tags == 'success' %}green{% elif message.tags == 'warning' %}yellow{% else %}blue{% endif %}-100 border border-{% if message.tags == 'error' %}red{% elif message.tags == 'success' %}green{% elif message.tags == 'warning' %}yellow{% else %}blue{% endif %}-400 text-{% if message.tags == 'error' %}red{% elif message.tags == 'success' %}green{% elif message.tags == 'warning' %}yellow{% else %}blue{% endif %}-700 px-4 py-3 rounded relative mb-2 flex justify-between items-center" 
+                 role="alert">
+                <span class="block sm:inline">{{ message }}</span>
+                <button @click="show = false" class="text-current opacity-70 hover:opacity-100 transition focus:outline-none">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    <footer class="text-white mt-12" style="background-color: {{ sistema_config.cor_rodape|default:'#111827' }};">
+        <div class="container mx-auto px-4 py-6">
+            <div class="text-center">
+                <p>&copy; 2026 {{ sistema_config.nome_empresa|default:"Sistema de Gestão de Oficina" }}. Todos os direitos reservados.</p>
+                <p class="text-sm text-gray-300 mt-2">
+                  {{ sistema_config.texto_rodape|default:"Desenvolvido com Django + Tailwind + HTMX + Alpine.js" }}
+                </p>
+            </div>
+        </div>
+    </footer>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

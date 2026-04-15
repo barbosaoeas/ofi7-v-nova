@@ -1,0 +1,100 @@
+"""
+Views de autenticação customizadas
+Login estilo: selecionar usuário → digitar apenas a senha
+"""
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login, logout
+from django.contrib import messages
+from django.views.decorators.http import require_http_methods
+from django.http import JsonResponse
+import json
+
+from .models import Funcionario
+
+
+def login_view(request):
+    """
+    Tela de login customizada.
+    Mostra todos os usuários ativos para seleção.
+    Após selecionar, usuário digita apenas a senha.
+    """
+    # Se já está logado, redireciona
+    if request.user.is_authenticated:
+        return redirect('dashboard:index')
+
+    # Busca todos os funcionários ativos para exibir na tela
+    # Inclui superusers (admin) mesmo sem campo 'ativo'
+    funcionarios = Funcionario.objects.filter(
+        is_active=True
+    ).order_by('first_name', 'last_name').values(
+        'id', 'username', 'first_name', 'last_name', 'perfil'
+    )
+
+    PERFIL_LABELS = {
+        'operacional': 'Operacional',
+        'supervisor': 'Supervisor',
+        'gerente': 'Gerente',
+        'admin': 'Administrador',
+        'orcamentista': 'Orçamentista',
+        'financeiro': 'Financeiro',
+        'funcionario': 'Funcionário',  # legado
+    }
+
+    # Prepara a lista enriquecida
+    usuarios = []
+    for f in funcionarios:
+        nome = f'{f["first_name"]} {f["last_name"]}'.strip() or f['username']
+        # Iniciais para o avatar
+        partes = nome.split()
+        iniciais = ''.join(p[0].upper() for p in partes[:2])
+        usuarios.append({
+            'id': f['id'],
+            'username': f['username'],
+            'nome': nome,
+            'iniciais': iniciais,
+            'perfil': f['perfil'],
+            'perfil_display': PERFIL_LABELS.get(f['perfil'], f['perfil'].capitalize()),
+        })
+
+    context = {
+        'usuarios': usuarios,
+        'usuarios_json': json.dumps(usuarios),
+    }
+    return render(request, 'funcionarios/login.html', context)
+
+
+@require_http_methods(["POST"])
+def autenticar_view(request):
+    """
+    Autentica o usuário com username + senha.
+    Retorna JSON (para requisições HTMX/fetch) ou redireciona.
+    """
+    username = request.POST.get('username', '').strip()
+    password = request.POST.get('password', '').strip()
+
+    if not username or not password:
+        messages.error(request, 'Preencha usuário e senha.')
+        return redirect('funcionarios:login')
+
+    user = authenticate(request, username=username, password=password)
+
+    if user is not None:
+        if user.is_active and hasattr(user, 'ativo') and user.ativo:
+            login(request, user)
+            next_url = request.POST.get('next') or request.GET.get('next') or 'dashboard:index'
+            # Se next_url for uma URL relativa, redireciona direto
+            if next_url.startswith('/'):
+                return redirect(next_url)
+            return redirect(next_url)
+        else:
+            messages.error(request, 'Sua conta está inativa. Fale com o administrador.')
+    else:
+        messages.error(request, 'Senha incorreta. Tente novamente.')
+
+    return redirect('funcionarios:login')
+
+
+def logout_view(request):
+    """Logout customizado"""
+    logout(request)
+    return redirect('funcionarios:login')

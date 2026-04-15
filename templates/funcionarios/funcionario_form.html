@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto py-8 px-4">
+    <!-- Header com Navegação -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <nav class="flex mb-2" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-1 md:space-x-3 text-sm font-medium text-gray-500">
+                    <li class="inline-flex items-center">
+                        <a href="{% url 'dashboard:index' %}" class="hover:text-blue-600 transition-colors">
+                            <i class="fas fa-home mr-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <div class="flex items-center">
+                            <i class="fas fa-chevron-right mx-2 text-gray-400 text-xs"></i>
+                            <a href="{% url 'funcionarios:list' %}" class="hover:text-blue-600 transition-colors">Funcionários</a>
+                        </div>
+                    </li>
+                    <li aria-current="page">
+                        <div class="flex items-center">
+                            <i class="fas fa-chevron-right mx-2 text-gray-400 text-xs"></i>
+                            <span class="text-gray-900">{{ title }}</span>
+                        </div>
+                    </li>
+                </ol>
+            </nav>
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">{{ title }}</h1>
+            <p class="mt-1 text-sm text-gray-500">Cadastre os dados pessoais, de acesso e de comissão do colaborador.</p>
+        </div>
+        <div class="hidden sm:block">
+            <i class="fas fa-user-tie text-5xl text-blue-100"></i>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-8">
+        {% csrf_token %}
+
+        <!-- Card Principal -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            
+            <!-- Seção: Dados de Acesso -->
+            <div class="p-6 border-b border-gray-50 bg-gray-50/50">
+                <div class="flex items-center space-x-3 mb-1">
+                    <div class="bg-blue-100 p-2 rounded-lg">
+                        <i class="fas fa-key text-blue-600"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-gray-800">Acesso ao Sistema</h2>
+                </div>
+            </div>
+            
+            <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="{{ form.username.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">Usuário (Login) *</label>
+                    {% render_field form.username class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all py-3 shadow-sm capitalize" %}
+                    {% if form.username.errors %}
+                        <p class="mt-2 text-sm text-red-600 font-medium">{{ form.username.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.password.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">Senha {% if not funcionario %}*{% endif %}</label>
+                    {% render_field form.password class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all py-3 shadow-sm" %}
+                    <p class="mt-1 text-xs text-gray-400">{{ form.password.help_text }}</p>
+                    {% if form.password.errors %}
+                        <p class="mt-2 text-sm text-red-600 font-medium">{{ form.password.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Seção: Dados Pessoais -->
+            <div class="p-6 border-b border-gray-50 bg-gray-50/50 border-t">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-indigo-100 p-2 rounded-lg">
+                        <i class="fas fa-id-card text-indigo-600"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-gray-800">Dados Pessoais</h2>
+                </div>
+            </div>
+
+            <div class="p-8 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="{{ form.first_name.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">Nome *</label>
+                        {% render_field form.first_name class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all py-3 shadow-sm capitalize" %}
+                    </div>
+                    <div>
+                        <label for="{{ form.last_name.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">Sobrenome *</label>
+                        {% render_field form.last_name class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all py-3 shadow-sm capitalize" %}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="{{ form.cpf.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">CPF *</label>
+                        {% render_field form.cpf class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all py-3 shadow-sm" x-mask="999.999.999-99" %}
+                    </div>
+                    <div>
+                        <label for="{{ form.email.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">E-mail</label>
+                        {% render_field form.email class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all py-3 shadow-sm" %}
+                    </div>
+                    <div>
+                        <label for="{{ form.telefone.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">Telefone</label>
+                        {% render_field form.telefone class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all py-3 shadow-sm" x-mask="(99) 99999-9999" %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção: Perfil e Comissões -->
+            <div class="p-6 border-b border-gray-50 bg-gray-50/50 border-t">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-green-100 p-2 rounded-lg">
+                        <i class="fas fa-briefcase text-green-600"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-gray-800">Contratação e Comissão</h2>
+                </div>
+            </div>
+
+            <div class="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label for="{{ form.perfil.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">Perfil de Acesso *</label>
+                    {% render_field form.perfil class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all py-3 shadow-sm" %}
+                </div>
+                <div>
+                    <label for="{{ form.percentual_comissao_padrao.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">Comissão Padrão (%)</label>
+                    <div class="relative">
+                        {% render_field form.percentual_comissao_padrao class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all py-3 shadow-sm pr-10" %}
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <span class="text-gray-400 font-bold">%</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label for="{{ form.data_admissao.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">Data de Admissão</label>
+                    {% render_field form.data_admissao class="block w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all py-3 shadow-sm" %}
+                </div>
+            </div>
+
+            <div class="p-8 bg-gray-50/50 border-t border-gray-100">
+                <div class="flex items-center space-x-3">
+                    {% render_field form.ativo class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500" %}
+                    <label for="{{ form.ativo.id_for_label }}" class="text-sm font-bold text-gray-700">Funcionário Ativo</label>
+                </div>
+            </div>
+
+            <!-- Seção: Foto do Colaborador -->
+            <div class="p-6 border-b border-gray-50 bg-gray-50/50 border-t">
+                <div class="flex items-center space-x-3 mb-1">
+                    <div class="bg-pink-100 p-2 rounded-lg">
+                        <i class="fas fa-camera text-pink-600"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-gray-800">Foto do Colaborador</h2>
+                </div>
+            </div>
+            <div class="p-8" x-data="{ previewUrl: '{% if funcionario and funcionario.foto %}{{ funcionario.foto.url }}{% endif %}' }">
+                <div class="flex items-center gap-6">
+                    <!-- Preview circular -->
+                    <div class="flex-shrink-0">
+                        <template x-if="previewUrl">
+                            <img :src="previewUrl" alt="Foto" class="w-24 h-24 rounded-full object-cover border-4 border-indigo-100 shadow">
+                        </template>
+                        <template x-if="!previewUrl">
+                            <div class="w-24 h-24 rounded-full bg-indigo-100 flex items-center justify-center border-4 border-indigo-200">
+                                <i class="fas fa-user text-3xl text-indigo-400"></i>
+                            </div>
+                        </template>
+                    </div>
+                    <!-- Input file -->
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Foto (JPG, PNG — máx. 5 MB)</label>
+                        <input type="file" name="foto" accept="image/*"
+                               @change="previewUrl = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : previewUrl"
+                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                        <p class="mt-1 text-xs text-gray-400">Deixe em branco para manter a foto atual. Clique na área acima para escolher um arquivo.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-8 py-6 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p class="text-xs text-gray-400">Campos marcados com <span class="text-red-500 font-bold">*</span> são obrigatórios.</p>
+                <div class="flex items-center space-x-3 w-full sm:w-auto">
+                    <a href="{% url 'funcionarios:list' %}" class="flex-1 sm:flex-none text-center px-6 py-3 text-sm font-bold text-gray-600 hover:text-gray-800 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="flex-1 sm:flex-none inline-flex items-center justify-center px-8 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all shadow-md shadow-blue-200 group">
+                        <i class="fas fa-save mr-2 group-hover:scale-110 transition-transform"></i>
+                        Salvar Colaborador
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

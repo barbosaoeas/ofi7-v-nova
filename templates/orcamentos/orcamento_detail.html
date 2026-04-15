@@ -1,0 +1,331 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ orcamento.numero }} — Oficina System{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Status colors */
+  .badge-rascunho  { background:rgba(100,116,139,.2); color:#94a3b8; border:1px solid rgba(148,163,184,.3); }
+  .badge-enviado   { background:rgba(59,130,246,.2);  color:#60a5fa; border:1px solid rgba(96,165,250,.3); }
+  .badge-aprovado  { background:rgba(34,197,94,.2);   color:#4ade80; border:1px solid rgba(74,222,128,.3); }
+  .badge-retrabalho  { background:rgba(239,68,68,.16);   color:#f87171; border:1px solid rgba(248,113,113,.28); }
+  .badge-rejeitado { background:rgba(239,68,68,.2);   color:#f87171; border:1px solid rgba(248,113,113,.3); }
+  .badge-cancelado { background:rgba(107,114,128,.2); color:#9ca3af; border:1px solid rgba(156,163,175,.3); }
+
+  /* Print */
+  @media print {
+    nav, footer, .no-print { display: none !important; }
+    body { background: white !important; }
+    .invoice-card { border: none !important; background: white !important; }
+    .text-gray-200, .text-gray-300, .text-gray-400 { color: #111 !important; }
+    .text-gray-500, .text-gray-600 { color: #555 !important; }
+  }
+
+  .action-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;
+    border: 1px solid; transition: all .2s; cursor: pointer;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <!-- ── Breadcrumb & Ações ── -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 no-print">
+    <div class="flex items-center gap-3">
+      <a href="{% url 'orcamentos:list' %}"
+         class="p-2 text-gray-500 hover:text-gray-800 bg-white shadow-sm hover:bg-gray-50 border border-gray-200 rounded-xl transition">
+        <i class="fas fa-arrow-left"></i>
+      </a>
+      <div>
+        <h1 class="text-xl font-bold text-gray-900 font-mono">{{ orcamento.numero }}</h1>
+        <p class="text-sm text-gray-600 font-medium">
+          Criado em {{ orcamento.criado_em|date:"d/m/Y às H:i" }}
+          por {{ orcamento.criado_por.get_full_name|default:orcamento.criado_por.username }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Ações contextuais por status -->
+    <div class="flex flex-wrap items-center gap-2">
+      <!-- Editar (rascunho / enviado / aprovado sem etapas) -->
+      {% if orcamento.status in 'rascunho,enviado' or orcamento.status in 'aprovado,retrabalho' and not orcamento.ordem_servico %}
+      <a href="{% url 'orcamentos:update' orcamento.pk %}"
+         class="action-btn text-blue-400 bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20">
+        <i class="fas fa-pen text-xs"></i> Editar
+      </a>
+      {% endif %}
+
+      <!-- Imprimir -->
+      <button onclick="window.print()"
+              class="action-btn text-gray-700 bg-white shadow-sm border-gray-300 hover:bg-gray-50">
+        <i class="fas fa-print text-xs"></i> Imprimir
+      </button>
+
+      <!-- Mudar status: Rascunho → Enviado -->
+      {% if orcamento.status == 'rascunho' %}
+      <form method="post" action="{% url 'orcamentos:mudar_status' orcamento.pk %}" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="enviado">
+        <button type="submit"
+                class="action-btn text-blue-400 bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20">
+          <i class="fas fa-paper-plane text-xs"></i> Marcar como Enviado
+        </button>
+      </form>
+      {% endif %}
+
+      <!-- Mudar status: Enviado → Aprovado / Rejeitado -->
+      {% if orcamento.status == 'enviado' %}
+      <form method="post" action="{% url 'orcamentos:mudar_status' orcamento.pk %}" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="aprovado">
+        <input type="date" name="data_prevista_entrega"
+               value="{% if orcamento.data_prevista_entrega %}{{ orcamento.data_prevista_entrega|date:'Y-m-d' }}{% endif %}"
+               required
+               class="action-btn bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+               style="padding: .45rem .65rem;">
+        <button type="submit"
+                class="action-btn text-green-400 bg-green-500/10 border-green-500/30 hover:bg-green-500/20">
+          <i class="fas fa-check text-xs"></i> Aprovar
+        </button>
+      </form>
+      <form method="post" action="{% url 'orcamentos:mudar_status' orcamento.pk %}" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="rejeitado">
+        <button type="submit"
+                onclick="return confirm('Rejeitar este orçamento?')"
+                class="action-btn text-red-400 bg-red-500/10 border-red-500/30 hover:bg-red-500/20">
+          <i class="fas fa-times text-xs"></i> Rejeitar
+        </button>
+      </form>
+      {% endif %}
+
+      <!-- Rejeitado → Rascunho -->
+      {% if orcamento.status == 'rejeitado' %}
+      <form method="post" action="{% url 'orcamentos:mudar_status' orcamento.pk %}" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="rascunho">
+        <button type="submit"
+                class="action-btn text-yellow-400 bg-yellow-500/10 border-yellow-500/30 hover:bg-yellow-500/20">
+          <i class="fas fa-undo text-xs"></i> Reabrir como Aguardando Resposta
+        </button>
+      </form>
+      {% endif %}
+
+      <!-- Aprovado → Acessar OS -->
+      {% if orcamento.status in 'aprovado,retrabalho' and orcamento.ordem_servico %}
+      <a href="{% url 'ordens:update' orcamento.ordem_servico.pk %}"
+         class="action-btn text-white bg-indigo-600 border-indigo-500 hover:bg-indigo-500">
+        <i class="fas fa-tasks text-xs"></i> Programar OS
+      </a>
+      {% endif %}
+      <!-- Aprovado sem OS → Alerta e botão para editar -->
+      {% if orcamento.status in 'aprovado,retrabalho' and not orcamento.ordem_servico and not orcamento.perda_total %}
+      <a href="{% url 'orcamentos:update' orcamento.pk %}"
+         class="action-btn text-orange-600 bg-orange-500/10 border-orange-400/40 hover:bg-orange-500/20">
+        <i class="fas fa-exclamation-triangle text-xs"></i> Incluir Etapas
+      </a>
+      {% endif %}
+
+      <!-- Marcar como Retrabalho (para aprovados/em_andamento) -->
+      {% if orcamento.status == 'aprovado' %}
+      <form method="post" action="{% url 'orcamentos:mudar_status' orcamento.pk %}" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="retrabalho">
+        <button type="submit"
+                onclick="return confirm('Marcar como Retrabalho? Isso registra o custo como prejuízo sem receita.')"
+                class="action-btn text-red-500 bg-red-500/10 border-red-400/40 hover:bg-red-500/20">
+          <i class="fas fa-redo text-xs"></i> Retrabalho
+        </button>
+      </form>
+      {% endif %}
+
+      <!-- Excluir (só rascunho) -->
+      {% if orcamento.status == 'rascunho' %}
+      <a href="{% url 'orcamentos:delete' orcamento.pk %}"
+         class="action-btn text-red-400 bg-red-500/10 border-red-500/30 hover:bg-red-500/20">
+        <i class="fas fa-trash text-xs"></i> Excluir
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ══════════════════ INVOICE CARD ══════════════════ -->
+  <div class="invoice-card bg-white shadow-md border border-gray-200 rounded-2xl overflow-hidden">
+
+    <!-- Topo: número, status e data -->
+    <div class="bg-gradient-to-r from-yellow-50 to-orange-50/30 border-b border-gray-200 p-6">
+      <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <!-- Lado esquerdo -->
+        <div>
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 bg-yellow-500/20 border border-yellow-500/30 rounded-xl flex items-center justify-center">
+              <i class="fas fa-file-invoice text-yellow-400 text-lg"></i>
+            </div>
+            <div>
+              <div class="text-xs text-gray-600 uppercase tracking-wider font-bold">Orçamento</div>
+              <div class="font-mono text-xl font-bold text-yellow-600">{{ orcamento.numero }}</div>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600">
+            <span><i class="fas fa-calendar mr-1.5 text-gray-400"></i>Data: <span class="text-gray-800 font-semibold">{{ orcamento.data_orcamento|date:"d/m/Y" }}</span></span>
+            {% if orcamento.validade %}
+            <span><i class="fas fa-clock mr-1.5 text-gray-400"></i>Válido até: <span class="text-gray-800 font-semibold">{{ orcamento.validade|date:"d/m/Y" }}</span></span>
+            {% endif %}
+            {% if orcamento.data_agendada %}
+            <span><i class="fas fa-calendar-check mr-1.5 text-gray-400"></i>Entrada: <span class="text-gray-800 font-semibold">{{ orcamento.data_agendada|date:"d/m/Y" }}</span></span>
+            {% endif %}
+            {% if orcamento.data_prevista_entrega %}
+            <span><i class="fas fa-flag-checkered mr-1.5 text-gray-400"></i>Entrega prevista: <span class="text-gray-800 font-semibold">{{ orcamento.data_prevista_entrega|date:"d/m/Y" }}</span></span>
+            {% endif %}
+          </div>
+        </div>
+        <!-- Status badge -->
+        <div class="flex flex-col items-end gap-2">
+          <span class="badge-{{ orcamento.status }} text-sm font-bold px-4 py-1.5 rounded-full">
+            {{ orcamento.get_status_display }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bento: cliente e veículo -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-0 border-b border-gray-200">
+      <!-- Cliente -->
+      <div class="p-5 sm:border-r border-gray-200">
+        <div class="text-xs text-gray-600 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <i class="fas fa-user text-blue-400"></i> Cliente
+        </div>
+        <div class="font-bold text-gray-900 text-lg">{{ orcamento.cliente.nome }}</div>
+        {% if orcamento.cliente.telefone %}
+          <div class="text-sm text-gray-600 mt-1"><i class="fas fa-phone mr-1.5 text-gray-400"></i>{{ orcamento.cliente.telefone }}</div>
+        {% endif %}
+        {% if orcamento.cliente.email %}
+          <div class="text-sm text-gray-600"><i class="fas fa-envelope mr-1.5 text-gray-400"></i>{{ orcamento.cliente.email }}</div>
+        {% endif %}
+        {% if orcamento.cliente.cpf or orcamento.cliente.cnpj %}
+          <div class="text-xs text-gray-600 mt-2 font-mono">
+            {% if orcamento.cliente.cpf %}CPF: {{ orcamento.cliente.cpf }}{% endif %}
+            {% if orcamento.cliente.cnpj %}CNPJ: {{ orcamento.cliente.cnpj }}{% endif %}
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Veículo -->
+      <div class="p-5">
+        <div class="text-xs text-gray-600 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <i class="fas fa-car text-green-400"></i> Veículo
+        </div>
+        <div class="font-bold text-gray-900 text-lg">
+          {% if orcamento.veiculo.modelo_veiculo %}
+            {{ orcamento.veiculo.modelo_veiculo.fabricante.nome }}
+            {{ orcamento.veiculo.modelo_veiculo.nome }}
+          {% else %}
+            {{ orcamento.veiculo.marca }} {{ orcamento.veiculo.modelo }}
+          {% endif %}
+        </div>
+        <div class="flex flex-wrap gap-3 mt-2 text-sm text-gray-600">
+          <span class="font-mono bg-yellow-100 border border-yellow-200 px-2 py-0.5 rounded text-yellow-700 font-bold text-xs">
+            {{ orcamento.veiculo.placa }}
+          </span>
+          {% if orcamento.veiculo.cor_display %}
+            <span><i class="fas fa-palette mr-1 text-gray-400"></i>{{ orcamento.veiculo.cor_display }}</span>
+          {% endif %}
+          {% if orcamento.veiculo.ano_fabricacao %}
+            <span><i class="fas fa-calendar-alt mr-1 text-gray-400"></i>{{ orcamento.veiculo.ano_fabricacao }}/{{ orcamento.veiculo.ano_modelo }}</span>
+          {% endif %}
+          {% if orcamento.veiculo.km_atual %}
+            <span><i class="fas fa-tachometer-alt mr-1 text-gray-400"></i>{{ orcamento.veiculo.km_atual|floatformat:0 }} km</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tabela de serviços ── -->
+    <div class="p-5">
+      <div class="text-xs text-gray-600 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+        <i class="fas fa-list-check text-purple-400"></i> Serviços / Itens
+      </div>
+
+      {% if orcamento.itens.all %}
+      <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b border-gray-200">
+            <tr class="text-left">
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">#</th>
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Etapa</th>
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Descrição</th>
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold text-right">Valor</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {% for item in orcamento.itens.all %}
+            <tr class="hover:bg-gray-50 transition">
+              <td class="px-4 py-3.5 text-gray-500 font-mono text-xs">{{ forloop.counter }}</td>
+              <td class="px-4 py-3.5">
+                <span class="inline-block bg-purple-100 border border-purple-200 text-purple-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">
+                  {{ item.etapa.nome|default:"—" }}
+                </span>
+              </td>
+              <td class="px-4 py-3.5 text-gray-800 font-medium">{{ item.descricao }}</td>
+              <td class="px-4 py-3.5 text-right font-bold text-gray-900">
+                R$ {{ item.valor|floatformat:2 }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-8 text-gray-600 text-sm">
+        <i class="fas fa-tools text-2xl mb-2 block"></i>
+        Nenhum serviço registrado neste orçamento.
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ── Totais ── -->
+    <div class="border-t border-gray-200">
+      <div class="flex justify-end p-5 bg-gray-50 rounded-b-2xl">
+        <div class="w-full sm:w-72">
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between text-gray-600">
+              <span>Subtotal dos serviços</span>
+              <span class="text-gray-800 font-semibold">R$ {{ orcamento.valor_total_servicos|floatformat:2 }}</span>
+            </div>
+            {% if orcamento.desconto %}
+            <div class="flex justify-between text-green-600 font-semibold">
+              <span>Desconto</span>
+              <span>- R$ {{ orcamento.desconto|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+            <div class="flex justify-between text-xl font-bold pt-3 border-t border-gray-300 text-yellow-600">
+              <span>Total</span>
+              <span>R$ {{ orcamento.valor_total_com_desconto|floatformat:2 }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Observações ── -->
+    {% if orcamento.observacoes %}
+    <div class="border-t border-gray-200 p-5">
+      <div class="text-xs text-gray-600 uppercase tracking-wider mb-2 flex items-center gap-1.5 font-bold">
+        <i class="fas fa-sticky-note text-orange-500"></i> Observações
+      </div>
+      <p class="text-gray-700 text-sm leading-relaxed font-medium">{{ orcamento.observacoes }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Rodapé do invoice -->
+    <div class="border-t border-gray-200 p-4 bg-gray-100 flex items-center justify-between text-xs text-gray-500 font-semibold">
+      <span>Oficina System — Gestão de Oficina</span>
+      <span class="font-mono">{{ orcamento.numero }} • {{ orcamento.data_orcamento|date:"d/m/Y" }}</span>
+    </div>
+  </div><!-- end invoice-card -->
+
+</div>
+{% endblock %}

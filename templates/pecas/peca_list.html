@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}Peças{% endblock %}
+
+{% block content %}
+<div class="mb-6 bg-white rounded-lg shadow-sm p-6">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">
+                <i class="fas fa-box text-orange-500 mr-2"></i>Controle de Peças
+            </h1>
+            <p class="text-gray-600 mt-1">Gestão de prazos, fornecedores e vínculos com veículos</p>
+        </div>
+        <a href="{% url 'pecas:create' %}" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition-all">
+            <i class="fas fa-plus mr-2"></i>Nova Peça
+        </a>
+    </div>
+    
+    <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="col-span-2">
+            <input type="text" name="q" value="{{ query }}" 
+                   placeholder="Buscar por descrição, placa ou fornecedor..."
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+        </div>
+        
+        <select name="status" class="px-4 py-2 border border-gray-300 rounded-lg">
+            <option value="">Todos os status</option>
+            {% for code, label in status_choices %}
+            <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        
+        <div class="flex space-x-2">
+            <button type="submit" class="flex-1 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-search mr-2"></i>Filtrar
+            </button>
+            <a href="{% url 'pecas:list' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg">
+                <i class="fas fa-times"></i>
+            </a>
+        </div>
+    </form>
+</div>
+
+<div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Peça / Veículo</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Prazos (Compra/Chegada)</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fornecedor</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-100">
+            {% for peca in pecas %}
+            <tr class="hover:bg-gray-50 transition-colors">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">{{ peca.descricao }}</div>
+                    {% if peca.veiculo %}
+                    <div class="text-xs text-blue-600 font-bold uppercase tracking-wider">{{ peca.veiculo.placa }} - {{ peca.veiculo.modelo }}</div>
+                    {% else %}
+                    <div class="text-xs text-gray-400 italic">Sem veículo vinculado</div>
+                    {% endif %}
+                    
+                    {% if peca.ordem %}
+                    <div class="text-[10px] text-gray-500 mt-1"><i class="fas fa-tools text-orange-500"></i> {{ peca.ordem.numero }}</div>
+                    {% elif peca.orcamento %}
+                    <div class="text-[10px] text-gray-500 mt-1"><i class="fas fa-file-invoice text-blue-500"></i> {{ peca.orcamento.numero }}</div>
+                    {% endif %}
+                    
+                    {% if peca.fornecedor_tipo == 'escritorio' %}
+                    <div class="mt-1">
+                        <span class="text-xs font-bold text-green-600">R$ {{ peca.valor_venda|default:"0.00" }}</span>
+                        <span class="text-[10px] text-gray-400 ml-1">(Escritório)</span>
+                    </div>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-xs text-gray-600">
+                        <i class="fas fa-shopping-cart mr-1 text-gray-400"></i>
+                        Compra: <span class="font-medium">{{ peca.prazo_compra|date:"d/m/Y"|default:"-" }}</span>
+                    </div>
+                    <div class="text-xs mt-1 {% if peca.esta_atrasada %}text-red-600 font-bold{% else %}text-gray-600{% endif %}">
+                        <i class="fas fa-truck mr-1 {% if peca.esta_atrasada %}text-red-500{% else %}text-gray-400{% endif %}"></i>
+                        Chegada: <span>{{ peca.prazo_chegada|date:"d/m/Y"|default:"-" }}</span>
+                        {% if peca.esta_atrasada %}<span class="ml-1 uppercase text-[10px] bg-red-100 px-1 rounded">Atrasada</span>{% endif %}
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">{{ peca.fornecedor_nome|default:"-" }}</div>
+                    <div class="text-xs text-gray-500">{{ peca.get_fornecedor_tipo_display }}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        {% if peca.status == 'recebida' %}bg-green-100 text-green-800
+                        {% elif peca.status == 'atrasada' %}bg-red-100 text-red-800
+                        {% elif peca.status == 'cancelada' %}bg-gray-100 text-gray-800
+                        {% elif peca.status == 'comprada' %}bg-blue-100 text-blue-800
+                        {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                        {{ peca.get_status_display }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                    <a href="{% url 'pecas:update' peca.pk %}" class="text-blue-600 hover:text-blue-900 mx-2" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="{% url 'pecas:delete' peca.pk %}" class="text-red-600 hover:text-red-900 mx-2" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                    <i class="fas fa-box-open text-4xl mb-2 block"></i>
+                    <p>Nenhuma peça cadastrada</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if pecas.has_other_pages %}
+<div class="mt-6 flex justify-center">
+    <nav class="flex space-x-2">
+        {% if pecas.has_previous %}
+        <a href="?page={{ pecas.previous_page_number }}&q={{ query }}&status={{ status_filter }}" 
+           class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Anterior</a>
+        {% endif %}
+        <span class="px-4 py-2 bg-blue-500 text-white rounded-lg">Página {{ pecas.number }} de {{ pecas.paginator.num_pages }}</span>
+        {% if pecas.has_next %}
+        <a href="?page={{ pecas.next_page_number }}&q={{ query }}&status={{ status_filter }}" 
+           class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Próxima</a>
+        {% endif %}
+    </nav>
+</div>
+{% endif %}
+{% endblock %}

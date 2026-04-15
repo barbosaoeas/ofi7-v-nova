@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+{% block title %}Agenda de Produção{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6" x-data="{ agendaEntrada: {{ agenda_entrada_json|safe|default:'{}' }}, dataSelecionada: null, modalAberto: false }">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+        <i class="fas fa-calendar-alt text-indigo-500"></i> Agenda de Produção
+      </h1>
+      <p class="text-sm text-gray-500 mt-1">Etapas programadas por data — visão do gestor</p>
+    </div>
+    <!-- Filtro de período -->
+    <form method="get" class="flex items-center gap-2 flex-wrap">
+      <div class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
+        <label class="text-xs text-gray-400 font-semibold">De</label>
+        <input type="date" name="de" value="{{ data_inicio|date:'Y-m-d' }}"
+               class="text-sm text-gray-700 border-none outline-none bg-transparent">
+      </div>
+      <div class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
+        <label class="text-xs text-gray-400 font-semibold">Até</label>
+        <input type="date" name="ate" value="{{ data_fim|date:'Y-m-d' }}"
+               class="text-sm text-gray-700 border-none outline-none bg-transparent">
+      </div>
+      <button type="submit"
+              class="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition shadow-sm">
+        <i class="fas fa-filter mr-1"></i>Filtrar
+      </button>
+    </form>
+  </div>
+
+  <!-- Agenda de Entrada (Orçamentos) -->
+  <div class="mb-8">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="bg-yellow-100 text-yellow-800 rounded-xl px-4 py-2 text-sm font-bold shadow-sm">
+        <i class="fas fa-car-side mr-1"></i>Agenda de Entrada (Orçamentos)
+      </div>
+      <div class="flex-1 h-px bg-yellow-100"></div>
+      <span class="text-xs text-gray-400 font-semibold">
+        {% if agenda_entrada %}{{ agenda_entrada|length }} data{{ agenda_entrada|length|pluralize }}{% else %}0 datas{% endif %}
+      </span>
+    </div>
+
+    {% if agenda_entrada %}
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+      {% for data, orcs in agenda_entrada.items %}
+      <button type="button"
+              @click="dataSelecionada='{{ data|date:'Y-m-d' }}'; modalAberto=true"
+              class="bg-white rounded-xl border border-gray-200 px-3 py-2 text-left hover:shadow-sm transition">
+        <div class="text-xs font-bold text-gray-800">{{ data|date:"d/m" }}</div>
+        <div class="text-[11px] text-gray-500">{{ data|date:"l"|capfirst }}</div>
+        <div class="mt-1 text-xs font-semibold text-yellow-700">{{ orcs|length }} veículo{{ orcs|length|pluralize }}</div>
+        {% with o0=orcs.0 %}
+        <div class="mt-2 text-[11px] font-mono text-indigo-600">Orç: {{ o0.numero }}</div>
+        <div class="text-[11px] text-gray-700 truncate">
+          {% if o0.veiculo.modelo_veiculo %}
+            {{ o0.veiculo.modelo_veiculo.fabricante.nome }} {{ o0.veiculo.modelo_veiculo.nome }}
+          {% else %}
+            {{ o0.veiculo.marca }} {{ o0.veiculo.modelo }}
+          {% endif %}
+          — {{ o0.veiculo.placa }}
+        </div>
+        <div class="text-[10px] text-gray-500 truncate">{{ o0.cliente.nome }}</div>
+        {% endwith %}
+        {% if orcs|length > 1 %}
+        <div class="mt-1 text-[10px] text-gray-400">+ {{ orcs|length|add:"-1" }} outro{{ orcs|length|add:"-1"|pluralize }}</div>
+        {% endif %}
+      </button>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center text-gray-400 text-sm">
+      Nenhum veículo com entrada agendada no período.
+    </div>
+    {% endif %}
+  </div>
+
+  <div x-show="modalAberto" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div class="absolute inset-0 bg-black/40" @click="modalAberto=false"></div>
+    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl">
+      <div class="p-4 border-b flex items-center justify-between">
+        <div>
+          <div class="text-sm font-bold text-gray-900">Entradas agendadas</div>
+          <div class="text-xs text-gray-500" x-text="dataSelecionada"></div>
+        </div>
+        <button type="button" class="text-gray-400 hover:text-gray-700" @click="modalAberto=false">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="p-4 space-y-2 max-h-[70vh] overflow-y-auto">
+        <template x-for="item in (agendaEntrada[dataSelecionada] || [])" :key="item.id">
+          <div class="border border-gray-100 rounded-xl p-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="text-xs font-mono text-indigo-600" x-text="'Orç: ' + item.numero"></div>
+                <div class="text-[11px] font-mono text-gray-500" x-show="item.os_numero" x-text="'OS: ' + item.os_numero"></div>
+                <div class="text-sm font-bold text-gray-900 truncate" x-text="item.placa"></div>
+                <div class="text-xs text-gray-500 truncate" x-text="item.cliente"></div>
+                <div class="text-[11px] text-gray-600 mt-1" x-text="'Veículo: ' + ((item.marca || '') + ' ' + (item.modelo || '') + (item.ano ? ' ' + item.ano : '')).trim()"></div>
+                <div class="text-[11px] text-gray-400" x-text="'Cor: ' + (item.cor || '-')"></div>
+                <div class="text-[11px] text-gray-400" x-text="'KM: ' + (item.km ?? '-')"></div>
+                <div class="text-[11px] text-gray-400" x-show="item.renavam" x-text="'Renavam: ' + item.renavam"></div>
+                <div class="text-[11px] text-gray-400" x-show="item.chassi" x-text="'Chassi: ' + item.chassi"></div>
+              </div>
+              <div class="flex-shrink-0 text-right">
+                <div class="text-xs font-semibold text-gray-600" x-text="item.status"></div>
+                <div class="text-[11px] text-gray-400" x-show="item.perda_total">Perda total</div>
+              </div>
+            </div>
+            <div class="mt-3 flex justify-end">
+              <a class="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                 x-show="item.status_codigo !== 'aprovado'"
+                 :href="item.detail_url">
+                Ver orçamento
+              </a>
+            </div>
+          </div>
+        </template>
+        <div class="text-sm text-gray-400 text-center py-10" x-show="(agendaEntrada[dataSelecionada] || []).length === 0">
+          Nenhum orçamento para esta data.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agenda por dia -->
+  {% if agenda %}
+    {% for data, etapas in agenda.items %}
+    <div class="mb-6">
+
+      <!-- Cabeçalho do dia -->
+      <div class="flex items-center gap-3 mb-3">
+        <div class="{% if data == hoje %}bg-indigo-600 text-white{% else %}bg-gray-100 text-gray-600{% endif %} rounded-xl px-4 py-2 text-sm font-bold shadow-sm">
+          {% if data == hoje %}<i class="fas fa-star mr-1 text-yellow-300"></i>HOJE —{% endif %}
+          {{ data|date:"l, d/m/Y"|capfirst }}
+        </div>
+        <div class="flex-1 h-px bg-gray-200"></div>
+        <span class="text-xs text-gray-400 font-semibold">{{ etapas|length }} etapa{{ etapas|length|pluralize }}</span>
+      </div>
+
+      <!-- Cards do dia -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {% for etapa in etapas %}
+        <div class="bg-white rounded-xl border-l-4 shadow-sm hover:shadow-md transition-shadow
+          {% if etapa.status == 'em_andamento' %}border-blue-500 bg-blue-50
+          {% elif etapa.status == 'finalizada' %}border-green-500 bg-green-50
+          {% elif etapa.status == 'aguardando_peca' %}border-orange-400 bg-orange-50
+          {% else %}border-indigo-400{% endif %} p-3">
+
+          <!-- OS + Etapa -->
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-bold text-indigo-600 font-mono">{{ etapa.ordem.numero }}</p>
+              <p class="text-sm font-semibold text-gray-800 leading-tight truncate">{{ etapa.nome }}</p>
+              <p class="text-xs text-gray-500 truncate mt-0.5">
+                <i class="fas fa-car mr-1 text-gray-300"></i>
+                {% if etapa.ordem.veiculo.modelo_veiculo %}
+                  {{ etapa.ordem.veiculo.modelo_veiculo.nome }}
+                {% endif %}
+                — {{ etapa.ordem.veiculo.placa }}
+              </p>
+            </div>
+            <!-- Avatar do funcionário -->
+            {% if etapa.funcionario %}
+            <div class="flex-shrink-0" title="{{ etapa.funcionario.get_full_name }}">
+              {% if etapa.funcionario.foto %}
+              <img src="{{ etapa.funcionario.foto.url }}" alt="{{ etapa.funcionario.first_name }}"
+                   class="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm">
+              {% else %}
+              <div class="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center text-white text-xs font-bold border-2 border-white shadow-sm">
+                {{ etapa.funcionario.first_name|first|upper }}{{ etapa.funcionario.last_name|first|upper }}
+              </div>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Cliente + Status -->
+          <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+            <span class="text-xs text-gray-500 truncate">
+              <i class="fas fa-user mr-1 text-gray-300"></i>{{ etapa.ordem.cliente.nome }}
+            </span>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full
+              {% if etapa.status == 'em_andamento' %}bg-blue-100 text-blue-700
+              {% elif etapa.status == 'finalizada' %}bg-green-100 text-green-700
+              {% elif etapa.status == 'aguardando_peca' %}bg-orange-100 text-orange-700
+              {% else %}bg-gray-100 text-gray-600{% endif %}">
+              {{ etapa.get_status_display }}
+            </span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-16 text-center">
+    <div class="text-5xl mb-4">📅</div>
+    <h3 class="text-lg font-bold text-gray-700 mb-1">Nenhuma etapa programada</h3>
+    <p class="text-sm text-gray-400">Nenhuma etapa com data definida no período selecionado.</p>
+  </div>
+  {% endif %}
+
+  <!-- Etapas sem data agendada -->
+  {% if sem_data %}
+  <div class="mt-8">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="bg-orange-100 text-orange-700 rounded-xl px-4 py-2 text-sm font-bold">
+        <i class="fas fa-parking mr-1"></i>No Pátio — Sem data agendada
+      </div>
+      <div class="flex-1 h-px bg-orange-100"></div>
+      <span class="text-xs text-gray-400 font-semibold">{{ sem_data|length }} etapa{{ sem_data|length|pluralize }}</span>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      {% for etapa in sem_data %}
+      <div class="bg-white rounded-xl border-l-4 border-orange-300 shadow-sm p-3 opacity-75">
+        <p class="text-xs font-bold text-indigo-600 font-mono">{{ etapa.ordem.numero }}</p>
+        <p class="text-sm font-semibold text-gray-800">{{ etapa.nome }}</p>
+        {% if etapa.funcionario %}
+        <p class="text-xs text-gray-500 mt-1">
+          <i class="fas fa-user mr-1 text-gray-300"></i>{{ etapa.funcionario.get_full_name }}
+        </p>
+        {% endif %}
+        <a href="{% url 'ordens:update' etapa.ordem.pk %}"
+           class="mt-2 inline-block text-xs text-indigo-600 hover:text-indigo-800 font-semibold">
+          <i class="fas fa-calendar-plus mr-1"></i>Agendar data
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

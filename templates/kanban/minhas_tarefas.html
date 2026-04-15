@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+{% block title %}Minhas Tarefas{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-6 space-y-6">
+
+  <!-- Header -->
+  <div>
+    <h1 class="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
+      <i class="fas fa-hard-hat text-indigo-500"></i> Minhas Tarefas
+    </h1>
+    <p class="text-sm text-gray-500 mt-1">
+      Olá, <strong>{{ user.first_name }}</strong>!
+      Hoje é <strong>{{ hoje|date:"d/m/Y" }}</strong>.
+      {% if tarefas_hoje %}
+      <span class="ml-2 bg-indigo-100 text-indigo-600 text-xs px-2 py-0.5 rounded-full font-bold">{{ tarefas_hoje|length }} tarefa(s) hoje</span>
+      {% else %}
+      <span class="ml-2 text-xs text-gray-400">(sem tarefas atribuídas para hoje)</span>
+      {% endif %}
+    </p>
+
+  </div>
+
+  {% if em_andamento %}
+  <div class="bg-blue-600 rounded-2xl shadow-lg p-5 text-white"
+       x-data="{ s: {{ segundos_trabalhando }}, meta: parseFloat('{{ em_andamento.horas_orcadas|default:"0" }}') || 0 }"
+       x-init="setInterval(() => s++, 1000)">
+    <div class="flex items-center justify-between mb-3">
+      <span class="text-xs font-bold uppercase tracking-widest text-blue-200">⚡ Em Execução Agora</span>
+      <span class="text-sm rounded-full px-3 py-1 font-mono font-bold"
+            :class="(meta > 0 && s >= (meta * 3600)) ? 'bg-red-500/30 text-red-100' : 'bg-white/20 text-white'"
+            x-text="`${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`">
+      </span>
+    </div>
+    <p class="text-xs font-mono text-blue-200 mb-1 flex items-center gap-2">
+      <span>{{ em_andamento.ordem.numero }}</span>
+      {% if em_andamento.ordem.orcamento and em_andamento.ordem.orcamento.status == 'retrabalho' %}
+        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
+          RETRABALHO
+        </span>
+      {% endif %}
+    </p>
+    <h2 class="text-xl font-black leading-tight mb-0.5">{{ em_andamento.nome }}</h2>
+    <p class="text-sm text-blue-200">
+      <i class="fas fa-car mr-1"></i>
+      {% if em_andamento.ordem.veiculo.modelo_veiculo %}{{ em_andamento.ordem.veiculo.modelo_veiculo.nome }}{% endif %}
+      — {{ em_andamento.ordem.veiculo.placa }}
+      &nbsp;·&nbsp;
+      <i class="fas fa-user mr-1"></i>{{ em_andamento.ordem.cliente.nome }}
+    </p>
+
+    <div class="flex gap-2 mt-4">
+      <button onclick="acaoSessao('pausar', {{ em_andamento.id }}, this)"
+              class="flex-1 py-2.5 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-bold transition active:scale-95">
+        <i class="fas fa-pause mr-1"></i>Pausar
+      </button>
+      <button onclick="acaoSessao('finalizar', {{ em_andamento.id }}, this)"
+              class="flex-1 py-2.5 bg-green-400 hover:bg-green-300 text-green-900 rounded-xl text-sm font-bold transition active:scale-95">
+        <i class="fas fa-check mr-1"></i>Finalizar
+      </button>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── TAREFAS DE HOJE ── -->
+  <div>
+    <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+      <i class="fas fa-calendar-day mr-1 text-indigo-400"></i>Hoje
+      {% if tarefas_hoje %}<span class="ml-1 bg-indigo-100 text-indigo-700 rounded-full px-2 py-0.5 text-xs">{{ tarefas_hoje|length }}</span>{% endif %}
+    </h2>
+
+    {% if not em_andamento and not tarefas_hoje %}
+    <div class="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400 text-sm">
+      <i class="fas fa-sun text-2xl mb-2 block text-yellow-300"></i>
+      Nenhuma tarefa para hoje!
+    </div>
+    {% endif %}
+
+    <div class="space-y-3">
+    {% for item in tarefas_hoje %}
+    {% with etapa=item.etapa bloqueada=item.bloqueada atrasada=item.atrasada %}
+    <div class="bg-white rounded-xl border shadow-sm p-4
+                {% if atrasada %}border-red-200{% elif bloqueada %}border-gray-100 opacity-60{% else %}border-gray-100{% endif %}">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-0.5">
+            <p class="text-xs font-mono text-indigo-500 font-bold">{{ etapa.ordem.numero }}</p>
+            {% if etapa.ordem.orcamento and etapa.ordem.orcamento.status == 'retrabalho' %}
+            <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
+              RETRABALHO
+            </span>
+            {% endif %}
+            {% if atrasada %}
+            <span class="text-xs bg-red-100 text-red-600 rounded-full px-2 py-0.5 font-semibold">
+              <i class="fas fa-exclamation-triangle mr-1"></i>Atrasada — {{ etapa.data_programada|date:"d/m" }}
+            </span>
+            {% elif etapa.data_programada %}
+            <span class="text-xs bg-indigo-50 text-indigo-500 rounded-full px-2 py-0.5">{{ etapa.data_programada|date:"d/m" }}</span>
+            {% endif %}
+          </div>
+          <h3 class="text-base font-bold text-gray-800 leading-tight">{{ etapa.nome }}</h3>
+          <p class="text-xs text-gray-500 mt-0.5">
+            <i class="fas fa-car mr-1 text-gray-300"></i>
+            {% if etapa.ordem.veiculo.modelo_veiculo %}{{ etapa.ordem.veiculo.modelo_veiculo.nome }}{% endif %}
+            — {{ etapa.ordem.veiculo.placa }}
+          </p>
+          <p class="text-xs text-gray-400">
+            <i class="fas fa-user mr-1 text-gray-200"></i>{{ etapa.ordem.cliente.nome }}
+          </p>
+          {% if etapa.horas_orcadas %}
+          <p class="text-xs text-gray-400 mt-1">⏱ {{ etapa.horas_orcadas }}h previstas</p>
+          {% endif %}
+        </div>
+
+        <div class="flex-shrink-0 flex flex-col items-end gap-2">
+          {% if bloqueada %}
+          <span class="text-xs bg-gray-100 text-gray-500 rounded-full px-3 py-1 font-semibold">
+            <i class="fas fa-lock mr-1"></i>Aguardando anterior
+          </span>
+          {% elif not em_andamento %}
+          <button onclick="acaoSessao('iniciar', {{ etapa.id }}, this)"
+                  class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl transition active:scale-95">
+            <i class="fas fa-play mr-1"></i>Iniciar
+          </button>
+          {% else %}
+          <span class="text-xs bg-blue-50 text-blue-600 rounded-full px-3 py-1 font-semibold">
+            <i class="fas fa-clock mr-1"></i>Na fila
+          </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── TAREFAS FUTURAS ── -->
+  {% if tarefas_futuras_agrupadas %}
+  <div>
+    <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+      <i class="fas fa-calendar-week mr-1 text-purple-400"></i>Programadas
+    </h2>
+
+    {% for data, etapas in tarefas_futuras_agrupadas.items %}
+    <div class="mb-4">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-purple-100 text-purple-700 text-xs font-bold px-3 py-1 rounded-full">
+          {{ data|date:"l, d/m/Y"|capfirst }}
+        </span>
+        <div class="flex-1 h-px bg-purple-100"></div>
+      </div>
+      <div class="space-y-2">
+        {% for etapa in etapas %}
+        <div class="bg-white rounded-xl border border-purple-100 shadow-sm p-4 opacity-80">
+          <p class="text-xs font-mono text-indigo-400 font-bold flex items-center gap-2">
+            <span>{{ etapa.ordem.numero }}</span>
+            {% if etapa.ordem.orcamento and etapa.ordem.orcamento.status == 'retrabalho' %}
+              <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
+                RETRABALHO
+              </span>
+            {% endif %}
+          </p>
+          <h3 class="text-sm font-bold text-gray-700">{{ etapa.nome }}</h3>
+          <p class="text-xs text-gray-400">
+            <i class="fas fa-car mr-1 text-gray-200"></i>
+            {% if etapa.ordem.veiculo.modelo_veiculo %}{{ etapa.ordem.veiculo.modelo_veiculo.nome }}{% endif %}
+            — {{ etapa.ordem.veiculo.placa }}
+            &nbsp;·&nbsp;{{ etapa.ordem.cliente.nome }}
+          </p>
+          {% if etapa.horas_orcadas %}
+          <p class="text-xs text-gray-300 mt-1">⏱ {{ etapa.horas_orcadas }}h previstas</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ── FINALIZADAS HOJE ── -->
+  {% if finalizadas_hoje %}
+  <div>
+    <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+      <i class="fas fa-check-circle mr-1 text-green-400"></i>Finalizadas Hoje
+    </h2>
+    <div class="space-y-2">
+      {% for etapa in finalizadas_hoje %}
+      <div class="bg-green-50 rounded-xl border border-green-100 p-4 opacity-75">
+        <p class="text-xs font-mono text-indigo-400 flex items-center gap-2">
+          <span>{{ etapa.ordem.numero }}</span>
+          {% if etapa.ordem.orcamento and etapa.ordem.orcamento.status == 'retrabalho' %}
+            <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
+              RETRABALHO
+            </span>
+          {% endif %}
+        </p>
+        <h3 class="text-sm font-bold text-green-800">{{ etapa.nome }}</h3>
+        <p class="text-xs text-green-600">
+          <i class="fas fa-car mr-1"></i>{{ etapa.ordem.veiculo.placa }}
+          &nbsp;·&nbsp; {{ etapa.data_fim|time:"H:i" }}
+          {% if etapa.horas_gastas_real %}&nbsp;·&nbsp; {{ etapa.horas_gastas_real }}h reais{% endif %}
+        </p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+function acaoSessao(acao, etapaId, btn) {
+  btn.disabled = true;
+  const urls = {
+    'iniciar': `/etapa/${etapaId}/sessao/iniciar/`,
+    'pausar':  `/etapa/${etapaId}/sessao/pausar/`,
+    'finalizar': `/etapa/${etapaId}/sessao/finalizar/`
+  };
+  fetch(urls[acao], {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'}
+  }).then(r => r.json()).then(data => {
+    if (data.ok || data.success || data.status) {
+      window.location.reload();
+    } else {
+      alert(data.erro || data.error || data.message || 'Erro ao processar ação.');
+      btn.disabled = false;
+    }
+  }).catch(() => { btn.disabled = false; });
+}
+</script>
+{% endblock %}

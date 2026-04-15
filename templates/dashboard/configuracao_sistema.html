@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Configurações do Sistema{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+    <div class="flex items-center justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-2xl font-extrabold text-gray-900">Configurações do Sistema</h1>
+        <p class="text-sm text-gray-500">Dados da empresa, logomarca e tom visual</p>
+      </div>
+      <a href="{% url 'dashboard:index' %}" class="text-sm font-semibold text-blue-600 hover:text-blue-800">
+        <i class="fas fa-arrow-left mr-1"></i>Voltar
+      </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Nome da empresa</label>
+          {% render_field form.nome_empresa class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" %}
+          {% if form.nome_empresa.errors %}<p class="text-xs text-red-600 mt-1">{{ form.nome_empresa.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">CNPJ</label>
+          {% render_field form.cnpj class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" %}
+          {% if form.cnpj.errors %}<p class="text-xs text-red-600 mt-1">{{ form.cnpj.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Endereço</label>
+          {% render_field form.endereco class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" %}
+          {% if form.endereco.errors %}<p class="text-xs text-red-600 mt-1">{{ form.endereco.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Telefone</label>
+          {% render_field form.telefone class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" %}
+          {% if form.telefone.errors %}<p class="text-xs text-red-600 mt-1">{{ form.telefone.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">E-mail</label>
+          {% render_field form.email class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" %}
+          {% if form.email.errors %}<p class="text-xs text-red-600 mt-1">{{ form.email.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Site</label>
+          {% render_field form.site class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" %}
+          {% if form.site.errors %}<p class="text-xs text-red-600 mt-1">{{ form.site.errors.0 }}</p>{% endif %}
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Logomarca</label>
+          {% render_field form.logo class="w-full text-sm" %}
+          {% if config.logo %}
+            <div class="mt-2 flex items-center gap-3">
+              <img src="{{ config.logo.url }}" class="h-10 w-10 rounded bg-white border border-gray-200 object-contain" alt="Logo">
+              <a href="{{ config.logo.url }}" target="_blank" class="text-xs font-semibold text-blue-600 hover:text-blue-800">Ver logo</a>
+            </div>
+          {% endif %}
+          {% if form.logo.errors %}<p class="text-xs text-red-600 mt-1">{{ form.logo.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Texto do rodapé</label>
+          {% render_field form.texto_rodape class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" %}
+          {% if form.texto_rodape.errors %}<p class="text-xs text-red-600 mt-1">{{ form.texto_rodape.errors.0 }}</p>{% endif %}
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Cor primária (hex)</label>
+          {% render_field form.cor_primaria class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" %}
+          {% if form.cor_primaria.errors %}<p class="text-xs text-red-600 mt-1">{{ form.cor_primaria.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Cor do rodapé (hex)</label>
+          {% render_field form.cor_rodape class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" %}
+          {% if form.cor_rodape.errors %}<p class="text-xs text-red-600 mt-1">{{ form.cor_rodape.errors.0 }}</p>{% endif %}
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2">
+        <button type="submit" class="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
+          <i class="fas fa-save mr-1"></i>Salvar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

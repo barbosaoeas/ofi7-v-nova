@@ -1,0 +1,894 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{{ titulo }} — Oficina System{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Item rows */
+  .item-form-row { transition: opacity .2s; }
+  .item-form-row.deleted { opacity: 0.3; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto bg-gray-900 p-8 rounded-[2rem] shadow-2xl my-4 text-gray-200"
+     x-data="orcamentoForm()"
+     x-init="init()">
+
+  <!-- ── Cabeçalho ── -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+    <a href="{% url 'orcamentos:list' %}"
+       class="p-2 text-gray-400 hover:text-gray-200 bg-white/5 hover:bg-white/10 rounded-xl transition">
+      <i class="fas fa-arrow-left"></i>
+    </a>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-100">
+        <i class="fas fa-file-invoice-dollar text-yellow-400 mr-2"></i>{{ titulo }}
+      </h1>
+        {% if is_edit %}
+        <p class="text-sm text-gray-500 mt-0.5">Editando • apenas aguardando resposta e enviados podem ser alterados</p>
+        {% endif %}
+    </div>
+  </div>
+
+  <form method="post" id="form-orcamento">
+    {% csrf_token %}
+    {% if is_create and submit_token %}
+    <input type="hidden" name="_submit_token" value="{{ submit_token }}">
+    {% endif %}
+
+    {% if form.errors or formset.errors or terceiro_formset.errors %}
+      <div class="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+        <h3 class="font-bold flex items-center gap-2 mb-2"><i class="fas fa-exclamation-triangle"></i> Erros no preenchimento:</h3>
+        <ul class="list-disc list-inside space-y-1">
+          {% for field, errors in form.errors.items %}
+            <li><strong>{{ field|title }}:</strong> {{ errors.0 }}</li>
+          {% endfor %}
+          {% for dict in formset.errors %}
+            {% for field, errors in dict.items %}
+              <li><strong>Serviço ({{ field }}):</strong> {{ errors.0 }}</li>
+            {% endfor %}
+          {% endfor %}
+          {% for dict in terceiro_formset.errors %}
+            {% for field, errors in dict.items %}
+              <li><strong>Terceirizado ({{ field }}):</strong> {{ errors.0 }}</li>
+            {% endfor %}
+          {% endfor %}
+          {% if form.non_field_errors %}<li>{{ form.non_field_errors.0 }}</li>{% endif %}
+          {% if formset.non_form_errors %}<li>Serviços (Geral): {{ formset.non_form_errors.0 }}</li>{% endif %}
+          {% if terceiro_formset.non_form_errors %}<li>Terceiros (Geral): {{ terceiro_formset.non_form_errors.0 }}</li>{% endif %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <!-- ── MANAGEMENT FORM DOS ITENS ── -->
+    {{ formset.management_form }}
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+      <!-- ════════════════ COLUNA ESQUERDA: cabeçalho do orçamento ════════════════ -->
+      <div class="lg:col-span-2 space-y-5">
+
+        <!-- Card: cliente e veículo -->
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <i class="fas fa-user-circle text-blue-400"></i> Cliente & Veículo
+          </h2>
+
+          <!-- Cliente -->
+          <div class="mb-4">
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
+              Cliente <span class="text-red-400">*</span>
+            </label>
+            {{ form.cliente }}
+            {% if form.cliente.errors %}
+              <p class="text-red-400 text-xs mt-1">{{ form.cliente.errors.0 }}</p>
+            {% endif %}
+          </div>
+
+          <!-- Veículo (filtrado por cliente via HTMX) -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
+              Veículo <span class="text-red-400">*</span>
+            </label>
+            <select name="{{ form.veiculo.html_name }}"
+                    id="id_veiculo"
+                    class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm focus:outline-none focus:border-yellow-400/60 focus:ring-1 focus:ring-yellow-400/20 transition">
+              {% if form.veiculo.field.queryset %}
+                <option value="">-- Selecione um veículo --</option>
+                {% for v in form.veiculo.field.queryset %}
+                  <option value="{{ v.pk }}" {% if form.veiculo.value|stringformat:"s" == v.pk|stringformat:"s" %}selected{% endif %}>
+                    {% if v.modelo_veiculo %}{{ v.modelo_veiculo.fabricante.nome }} {{ v.modelo_veiculo.nome }}{% else %}{{ v.marca }} {{ v.modelo }}{% endif %} — {{ v.placa }}
+                  </option>
+                {% endfor %}
+              {% else %}
+                <option value="">-- Selecione um cliente primeiro --</option>
+              {% endif %}
+            </select>
+            {% if form.veiculo.errors %}
+              <p class="text-red-400 text-xs mt-1">{{ form.veiculo.errors.0 }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Card: validade, status e desconto -->
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <i class="fas fa-sliders-h text-purple-400"></i> Condições & Controle
+          </h2>
+
+          <div class="mb-4">
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
+              Status do Orçamento
+            </label>
+            {{ form.status }}
+            {% if form.status.errors %}
+              <p class="text-red-400 text-xs mt-1">{{ form.status.errors.0 }}</p>
+            {% endif %}
+          </div>
+
+          <div class="mb-4 flex items-center gap-3">
+            {{ form.perda_total }}
+            <label for="{{ form.perda_total.id_for_label }}" class="text-sm font-semibold text-gray-200 select-none">
+              Perda total
+            </label>
+            {% if form.perda_total.errors %}
+              <p class="text-red-400 text-xs">{{ form.perda_total.errors.0 }}</p>
+            {% endif %}
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
+              Agendar entrada
+            </label>
+            {{ form.data_agendada }}
+            {% if form.data_agendada.errors %}
+              <p class="text-red-400 text-xs mt-1">{{ form.data_agendada.errors.0 }}</p>
+            {% endif %}
+            <div id="alerta-capacidade" class="transition-all duration-300"></div>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
+              Previsão de entrega
+            </label>
+            {{ form.data_prevista_entrega }}
+            {% if form.data_prevista_entrega.errors %}
+              <p class="text-red-400 text-xs mt-1">{{ form.data_prevista_entrega.errors.0 }}</p>
+            {% endif %}
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
+              Válido até
+            </label>
+            {{ form.validade }}
+            {% if form.validade.errors %}
+              <p class="text-red-400 text-xs mt-1">{{ form.validade.errors.0 }}</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
+              Desconto (R$)
+            </label>
+            <input type="number" name="{{ form.desconto.html_name }}"
+                   id="id_desconto"
+                   value="{{ form.desconto.value|default:'0.00' }}"
+                   step="0.01" min="0"
+                   placeholder="0.00"
+                   x-model="desconto"
+                   @input="recalcular()"
+                   class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm focus:outline-none focus:border-yellow-400/60 focus:ring-1 focus:ring-yellow-400/20 transition">
+            {% if form.desconto.errors %}
+              <p class="text-red-400 text-xs mt-1">{{ form.desconto.errors.0 }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Card: observações -->
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <i class="fas fa-sticky-note text-orange-400"></i> Observações
+          </h2>
+          <textarea name="{{ form.observacoes.html_name }}"
+                    id="id_observacoes"
+                    rows="4"
+                    placeholder="Condições de pagamento, prazo de execução, garantia..."
+                    class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm placeholder-gray-600 focus:outline-none focus:border-yellow-400/60 focus:ring-1 focus:ring-yellow-400/20 transition resize-none">{{ form.observacoes.value|default:'' }}</textarea>
+          {% if form.observacoes.errors %}
+            <p class="text-red-400 text-xs mt-1">{{ form.observacoes.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Card: resumo de valores -->
+        <div class="bg-gradient-to-br from-yellow-500/10 to-orange-500/5 border border-yellow-500/20 rounded-2xl p-5">
+          <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <i class="fas fa-calculator text-yellow-400"></i> Resumo
+          </h2>
+
+          <div class="space-y-1 text-sm">
+            <div class="flex justify-between py-1 text-gray-400">
+              <span>Subtotal dos serviços</span>
+              <span x-text="'R$ ' + subtotal.toFixed(2).replace('.', ',')">R$ 0,00</span>
+            </div>
+            <div class="flex justify-between py-1 text-red-400">
+              <span>Prejuízo (retrabalho)</span>
+              <span x-text="'R$ ' + prejuizoRetrabalho.toFixed(2).replace('.', ',')">R$ 0,00</span>
+            </div>
+            <div class="flex justify-between py-1 text-green-400">
+              <span>Desconto</span>
+              <span x-text="'- R$ ' + parseFloat(desconto || 0).toFixed(2).replace('.', ',')">- R$ 0,00</span>
+            </div>
+            <div class="flex justify-between py-2.5 border-t border-white/15 text-lg font-bold text-yellow-400 mt-1">
+              <span>Total</span>
+              <span x-text="'R$ ' + total.toFixed(2).replace('.', ',')">R$ 0,00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════ COLUNA DIREITA: itens do orçamento ════════════════ -->
+      <div class="lg:col-span-3">
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <i class="fas fa-list-check text-green-400"></i> Serviços
+              <span class="text-gray-600 font-normal normal-case tracking-normal">(itens do orçamento)</span>
+            </h2>
+            <button type="button"
+                    @click="adicionarItem()"
+                    class="inline-flex items-center gap-1.5 text-sm bg-green-500/15 hover:bg-green-500/25 text-green-400 border border-green-500/30 px-3 py-1.5 rounded-lg transition">
+              <i class="fas fa-plus text-xs"></i> Adicionar Serviço
+            </button>
+          </div>
+
+          <!-- Cabeçalho da tabela -->
+          <div class="grid grid-cols-12 gap-2 px-1 mb-2 text-xs text-gray-500 uppercase tracking-wider font-semibold">
+            <div class="col-span-4">Descrição</div>
+            <div class="col-span-3">Etapa</div>
+            <div class="col-span-1 text-center">Horas</div>
+            <div class="col-span-2 text-right">Valor (R$)</div>
+            <div class="col-span-1 text-center">Retr.</div>
+            <div class="col-span-1"></div>
+          </div>
+
+          <!-- ── Itens do FormSet (já existentes) ── -->
+          <div id="items-container">
+            {% for item_form in formset %}
+            <div class="item-form-row grid grid-cols-12 gap-2 mb-2 items-start
+                        {% if item_form.instance.pk %}has-instance{% endif %}"
+                 data-index="{{ forloop.counter0 }}">
+
+              {# Campos ocultos do formset #}
+              {% for hidden in item_form.hidden_fields %}{{ hidden }}{% endfor %}
+
+              <div class="col-span-4">
+                {{ item_form.descricao | add_class:"w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm placeholder-gray-600 focus:outline-none focus:border-yellow-400/60 transition" }}
+                {% if item_form.descricao.errors %}
+                  <p class="text-red-400 text-[10px] mt-1">{{ item_form.descricao.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div class="col-span-3">
+                {{ item_form.etapa | add_class:"w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm placeholder-gray-600 focus:outline-none focus:border-yellow-400/60 transition etapa-select" }}
+                {% if item_form.etapa.errors %}
+                  <p class="text-red-400 text-[10px] mt-1">{{ item_form.etapa.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div class="col-span-1">
+                {{ item_form.horas_previstas | add_class:"w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm text-center focus:outline-none focus:border-yellow-400/60 transition" }}
+                {% if item_form.horas_previstas.errors %}
+                  <p class="text-red-400 text-[10px] mt-1">{{ item_form.horas_previstas.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div class="col-span-2">
+                {{ item_form.valor | add_class:"w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm text-right focus:outline-none focus:border-yellow-400/60 transition item-valor-input" }}
+                {% if item_form.valor.errors %}
+                  <p class="text-red-400 text-[10px] mt-1">{{ item_form.valor.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div class="col-span-1 flex items-center justify-center pt-2">
+                {{ item_form.retrabalho }}
+              </div>
+              <div class="col-span-1 flex items-center justify-center pt-0.5">
+                {% if item_form.instance.pk %}
+                  {# Marcar para deletar (formset delete) #}
+                  <button type="button"
+                          @click="removerItemExistente($event)"
+                          class="text-gray-600 hover:text-red-400 transition p-1" title="Remover">
+                    <i class="fas fa-times-circle"></i>
+                  </button>
+                  <span style="display:none">{{ item_form.DELETE }}</span>
+                {% else %}
+                  <button type="button"
+                          @click="removerItemNovo($el.closest('.item-form-row'))"
+                          class="text-gray-600 hover:text-red-400 transition p-1" title="Remover">
+                    <i class="fas fa-times-circle"></i>
+                  </button>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- ── Novos itens adicionados via Alpine.js ── -->
+          <template x-for="(item, idx) in novosItens" :key="idx">
+            <div class="grid grid-cols-12 gap-2 mb-2 items-start novo-item">
+              <div class="col-span-4">
+                <input type="text"
+                       :name="'itens-' + ({{ formset.total_form_count }} + idx) + '-descricao'"
+                       x-model="item.descricao"
+                       placeholder="Descrição..."
+                       class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm placeholder-gray-600 focus:outline-none focus:border-yellow-400/60 transition">
+              </div>
+              <div class="col-span-3">
+                <select :name="'itens-' + ({{ formset.total_form_count }} + idx) + '-etapa'"
+                        x-model="item.etapa"
+                        @change="atualizarSelects()"
+                        class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm focus:outline-none focus:border-yellow-400/60 transition etapa-select">
+                  <option value="" class="text-gray-400">Selecione a Etapa</option>
+                  <template x-for="e in etapas" :key="e.id">
+                    <option :value="e.id" x-text="e.nome" :disabled="isEtapaSelecionada(e.id, idx, selectRenders)"></option>
+                  </template>
+                </select>
+              </div>
+              <div class="col-span-1">
+                <input type="number"
+                       :name="'itens-' + ({{ formset.total_form_count }} + idx) + '-horas_previstas'"
+                       x-model="item.horas_previstas"
+                       placeholder="Hrs" step="0.1" min="0"
+                       class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm text-center focus:outline-none focus:border-yellow-400/60 transition">
+              </div>
+              <div class="col-span-2">
+                <input type="number"
+                       :name="'itens-' + ({{ formset.total_form_count }} + idx) + '-valor'"
+                       x-model="item.valor"
+                       @input="recalcular()"
+                       placeholder="0.00" step="0.01" min="0"
+                       class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm text-right focus:outline-none focus:border-yellow-400/60 transition">
+              </div>
+              <div class="col-span-1 flex items-center justify-center pt-2">
+                <input type="checkbox"
+                       :name="'itens-' + ({{ formset.total_form_count }} + idx) + '-retrabalho'"
+                       x-model="item.retrabalho"
+                       @change="recalcular()"
+                       class="w-5 h-5 text-red-400 bg-white/5 border-white/30 rounded focus:ring-red-400/30">
+              </div>
+              <div class="col-span-1 flex items-center justify-center pt-0.5">
+                <button type="button" @click="removerNovoItem(idx)"
+                        class="text-gray-600 hover:text-red-400 transition p-1">
+                  <i class="fas fa-times-circle"></i>
+                </button>
+              </div>
+            </div>
+          </template>
+
+          <!-- Estado vazio -->
+          <div x-show="totalItens === 0"
+               class="py-10 text-center text-gray-600 text-sm border border-dashed border-white/10 rounded-xl mt-2">
+            <i class="fas fa-tools text-2xl mb-2 block text-gray-700"></i>
+            Nenhum serviço adicionado. Clique em "Adicionar Serviço".
+          </div>
+
+          <!-- Aviso de erro do formset -->
+          {% if formset.non_form_errors %}
+            <div class="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+              <i class="fas fa-exclamation-circle mr-2"></i>
+              {{ formset.non_form_errors.0 }}
+            </div>
+          {% endif %}
+
+        </div><!-- end card itens -->
+
+        <!-- ════════════════ SERVIÇOS TERCEIRIZADOS ════════════════ -->
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-5 mt-5">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <i class="fas fa-handshake text-blue-400"></i> Serviços de Terceiros
+              <span class="text-gray-600 font-normal normal-case tracking-normal">(fornecedores e retíficas)</span>
+            </h2>
+            <button type="button"
+                    @click="adicionarTerceiro()"
+                    class="inline-flex items-center gap-1.5 text-sm bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg transition">
+              <i class="fas fa-plus text-xs"></i> Adicionar Fornecedor
+            </button>
+          </div>
+
+          {{ terceiro_formset.management_form }}
+
+          <!-- Cabeçalho da tabela -->
+          <div class="grid grid-cols-12 gap-2 px-1 mb-2 text-xs text-gray-500 uppercase tracking-wider font-semibold">
+            <div class="col-span-5">Serviço/Peça</div>
+            <div class="col-span-4">Fornecedor</div>
+            <div class="col-span-2 text-right">Valor (R$)</div>
+            <div class="col-span-1"></div>
+          </div>
+
+          <!-- ── Itens do FormSet Terceiros (já existentes) ── -->
+          <div id="terceiros-container">
+            {% for terc_form in terceiro_formset %}
+            <div class="terc-form-row grid grid-cols-12 gap-2 mb-2 items-start
+                        {% if terc_form.instance.pk %}has-instance{% endif %}"
+                 data-index="{{ forloop.counter0 }}">
+
+              {# Campos ocultos do formset #}
+              {% for hidden in terc_form.hidden_fields %}{{ hidden }}{% endfor %}
+
+              <div class="col-span-5">
+                {{ terc_form.descricao | add_class:"w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm placeholder-gray-600 focus:outline-none focus:border-blue-400/60 transition" }}
+                {% if terc_form.descricao.errors %}
+                  <p class="text-red-400 text-[10px] mt-1">{{ terc_form.descricao.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div class="col-span-4">
+                {{ terc_form.fornecedor | add_class:"w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm focus:outline-none focus:border-blue-400/60 transition fornecedor-select" }}
+                {% if terc_form.fornecedor.errors %}
+                  <p class="text-red-400 text-[10px] mt-1">{{ terc_form.fornecedor.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div class="col-span-2">
+                {{ terc_form.valor | add_class:"w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm text-right focus:outline-none focus:border-blue-400/60 transition item-terceiro-valor" }}
+                {% if terc_form.valor.errors %}
+                  <p class="text-red-400 text-[10px] mt-1">{{ terc_form.valor.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div class="col-span-1 flex items-center justify-center pt-0.5">
+                {% if terc_form.instance.pk %}
+                  <button type="button" @click="removerItemExistente($event, '.terc-form-row')" class="text-gray-600 hover:text-red-400 transition p-1" title="Remover"><i class="fas fa-times-circle"></i></button>
+                  <span style="display:none">{{ terc_form.DELETE }}</span>
+                {% else %}
+                  <button type="button" @click="removerItemNovo($el.closest('.terc-form-row'))" class="text-gray-600 hover:text-red-400 transition p-1" title="Remover"><i class="fas fa-times-circle"></i></button>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- ── Novos terceiros adicionados via Alpine.js ── -->
+          <template x-for="(terc, idx) in novosTerceiros" :key="idx">
+            <div class="grid grid-cols-12 gap-2 mb-2 items-start novo-terceiro">
+              <div class="col-span-5">
+                <input type="text"
+                       :name="'servicos_terceiros-' + ({{ terceiro_formset.total_form_count }} + idx) + '-descricao'"
+                       x-model="terc.descricao"
+                       placeholder="Descrição..."
+                       class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm placeholder-gray-600 focus:outline-none focus:border-blue-400/60 transition">
+              </div>
+              <div class="col-span-4">
+                <select :name="'servicos_terceiros-' + ({{ terceiro_formset.total_form_count }} + idx) + '-fornecedor'"
+                        x-model="terc.fornecedor"
+                        class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm focus:outline-none focus:border-blue-400/60 transition">
+                  <option value="" class="text-gray-400">Selecione o Fornecedor</option>
+                  <template x-for="f in fornecedores" :key="f.id">
+                    <option :value="f.id" x-text="f.nome + (f.atividade_fornecedor ? ' (' + f.atividade_fornecedor + ')' : '')"></option>
+                  </template>
+                </select>
+              </div>
+              <div class="col-span-2">
+                <input type="number"
+                       :name="'servicos_terceiros-' + ({{ terceiro_formset.total_form_count }} + idx) + '-valor'"
+                       x-model="terc.valor"
+                       @input="recalcular()"
+                       placeholder="0.00" step="0.01" min="0"
+                       class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm text-right focus:outline-none focus:border-blue-400/60 transition item-terceiro-valor">
+              </div>
+              <div class="col-span-1 flex items-center justify-center pt-0.5">
+                <button type="button" @click="removerNovoTerceiro(idx)"
+                        class="text-gray-600 hover:text-red-400 transition p-1">
+                  <i class="fas fa-times-circle"></i>
+                </button>
+              </div>
+            </div>
+          </template>
+
+          <div x-show="totalTerceiros === 0"
+               class="py-5 text-center text-gray-600 text-sm border border-dashed border-white/10 rounded-xl mt-2">
+            Nenhum serviço terceirizado adicionado.
+          </div>
+
+          {% if terceiro_formset.non_form_errors %}
+            <div class="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+              <i class="fas fa-exclamation-circle mr-2"></i>
+              {{ terceiro_formset.non_form_errors.0 }}
+            </div>
+          {% endif %}
+        </div><!-- end card terceiros -->
+
+        <!-- ── Botões de ação ── -->
+        <div class="flex gap-3 mt-4 justify-end">
+          <a href="{% url 'orcamentos:list' %}"
+             class="px-5 py-2.5 text-gray-400 hover:text-gray-200 bg-white/5 hover:bg-white/10 rounded-xl transition text-sm font-medium">
+            Cancelar
+          </a>
+          <button type="submit" id="btn-salvar-orcamento"
+                  class="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold px-6 py-2.5 rounded-xl transition shadow-lg shadow-yellow-500/20 text-sm">
+            <i class="fas fa-save"></i>
+            {% if is_create %}Criar Orçamento{% else %}Salvar Alterações{% endif %}
+          </button>
+        </div>
+      </div><!-- end col direita -->
+    </div>
+  </form>
+
+  <div x-show="modalDiariasAberto" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div class="absolute inset-0 bg-black/50" @click="fecharModalDiarias()"></div>
+    <div class="relative bg-gray-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg">
+      <div class="p-4 border-b border-white/10 flex items-center justify-between">
+        <div>
+          <div class="text-sm font-bold text-gray-100">Perda total — Diárias</div>
+          <div class="text-xs text-gray-400">Calcule os dias que o veículo ficou na oficina</div>
+        </div>
+        <button type="button" class="text-gray-400 hover:text-gray-200" @click="fecharModalDiarias()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="p-4 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Entrada</label>
+            <input type="date"
+                   x-model="diariasEntrada"
+                   @change="calcularDiarias()"
+                   class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm focus:outline-none focus:border-yellow-400/60 transition">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Saída</label>
+            <input type="date"
+                   x-model="diariasSaida"
+                   @change="calcularDiarias()"
+                   class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm focus:outline-none focus:border-yellow-400/60 transition">
+          </div>
+        </div>
+
+        <div class="bg-white/5 border border-white/10 rounded-xl p-3">
+          <div class="text-xs text-gray-400 uppercase tracking-wide font-semibold">Dias na oficina</div>
+          <div class="text-2xl font-extrabold text-yellow-400 mt-1" x-text="diariasDias + ' dia(s)'"></div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2 justify-end">
+          <button type="button"
+                  class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-gray-200 font-semibold transition border border-white/10"
+                  @click="confirmarDiarias(false)">
+            Não cobrar
+          </button>
+          <button type="button"
+                  class="px-4 py-2 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-semibold transition"
+                  @click="confirmarDiarias(true)">
+            Cobrar diárias
+          </button>
+        </div>
+
+        <div class="text-[11px] text-gray-500" x-show="cobrarDiarias">
+          Marcado para cobrar diárias. O lançamento no financeiro será feito quando o módulo existir.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+  /* Garante que os dropdowns no Windows fiquem sempre legíveis no modo escuro */
+  select option {
+    background-color: #1f2937; /* bg-gray-800 */
+    color: #e5e7eb; /* text-gray-200 */
+  }
+  select option:disabled {
+    color: #6b7280; /* text-gray-500 */
+    font-style: italic;
+  }
+</style>
+<script>
+function orcamentoForm() {
+  return {
+    novosItens: [],
+    novosTerceiros: [],
+    desconto: parseFloat('{{ form.desconto.value|default:"0" }}') || 0,
+    subtotal: 0,
+    prejuizoRetrabalho: 0,
+    total: 0,
+    modalDiariasAberto: false,
+    diariasEntrada: '',
+    diariasSaida: '',
+    diariasDias: 0,
+    cobrarDiarias: false,
+    etapas: {{ etapas_json|safe|default:"[]" }},
+    fornecedores: {{ fornecedores_json|safe|default:"[]" }},
+
+    init() {
+      this.recalcular();
+      this.atualizarSelects();
+
+      const perdaTotalEl = document.getElementById('id_perda_total');
+      if (perdaTotalEl) {
+        perdaTotalEl.addEventListener('change', () => {
+          if (perdaTotalEl.checked) {
+            this.abrirModalDiarias();
+          } else {
+            this.cobrarDiarias = false;
+            this.modalDiariasAberto = false;
+          }
+        });
+      }
+
+      // Recalcular ao mudar valores dos itens existentes do formset
+      document.querySelectorAll('.item-valor-input, .item-terceiro-valor').forEach(el => {
+        el.addEventListener('input', () => this.recalcular());
+      });
+      document.querySelectorAll('.item-retrabalho').forEach(el => {
+        el.addEventListener('change', () => this.recalcular());
+      });
+      
+      // Atualizar selects travados ao mudar etapa em um item do Django
+      document.querySelectorAll('.etapa-select').forEach(el => {
+        el.addEventListener('change', () => {
+             this.atualizarSelects();
+        });
+      });
+
+      // HTMX: ao trocar cliente, atualiza veículos
+      const clienteSelect = document.getElementById('id_cliente');
+      if (clienteSelect) {
+        clienteSelect.addEventListener('change', () => {
+          const clienteId = clienteSelect.value;
+          const veiculoSelect = document.getElementById('id_veiculo');
+          if (!clienteId) {
+            veiculoSelect.innerHTML = '<option value="">-- Selecione um cliente primeiro --</option>';
+            return;
+          }
+          fetch(`/orcamentos/veiculos-por-cliente/?cliente=${clienteId}`)
+            .then(r => r.text())
+            .then(html => { veiculoSelect.innerHTML = html; });
+        });
+      }
+
+      // Fix: o management form TOTAL_FORMS precisa ser atualizado antes do submit
+      document.getElementById('form-orcamento').addEventListener('submit', () => {
+        const btnSalvar = document.getElementById('btn-salvar-orcamento');
+        if (btnSalvar) {
+          btnSalvar.disabled = true;
+          btnSalvar.classList.add('opacity-60', 'cursor-not-allowed');
+        }
+
+        const totalForms = document.getElementById('id_itens-TOTAL_FORMS');
+        if (totalForms) {
+          totalForms.value = parseInt('{{ formset.total_form_count }}') + this.novosItens.length;
+        }
+        
+        const totalTerceiros = document.getElementById('id_servicos_terceiros-TOTAL_FORMS');
+        if (totalTerceiros) {
+          totalTerceiros.value = parseInt('{{ terceiro_formset.total_form_count }}') + this.novosTerceiros.length;
+        }
+
+        const perdaTotalEl2 = document.getElementById('id_perda_total');
+        const obsEl = document.getElementById('id_observacoes');
+        if (perdaTotalEl2 && perdaTotalEl2.checked && this.cobrarDiarias && obsEl) {
+          const entrada = (this.diariasEntrada || '').trim();
+          const saida = (this.diariasSaida || '').trim();
+          const dias = parseInt(this.diariasDias) || 0;
+          const linha = `Diárias (Perda Total): ${dias} dia(s) • Entrada ${entrada} • Saída ${saida}`;
+          if (!String(obsEl.value || '').includes('Diárias (Perda Total):')) {
+            obsEl.value = (obsEl.value || '').trim();
+            obsEl.value = obsEl.value ? (obsEl.value + '\n' + linha) : linha;
+          }
+        }
+      });
+    },
+
+    abrirModalDiarias() {
+      const entradaEl = document.getElementById('id_data_agendada');
+      const hoje = new Date();
+      const hojeStr = hoje.toISOString().slice(0, 10);
+      this.diariasEntrada = (entradaEl && entradaEl.value) ? entradaEl.value : hojeStr;
+      this.diariasSaida = hojeStr;
+      this.cobrarDiarias = false;
+      this.calcularDiarias();
+      this.modalDiariasAberto = true;
+    },
+
+    fecharModalDiarias() {
+      this.modalDiariasAberto = false;
+    },
+
+    calcularDiarias() {
+      const parse = (s) => {
+        if (!s) return null;
+        const [y, m, d] = String(s).split('-').map(n => parseInt(n, 10));
+        if (!y || !m || !d) return null;
+        return new Date(y, m - 1, d);
+      };
+      const entrada = parse(this.diariasEntrada);
+      const saida = parse(this.diariasSaida);
+      if (!entrada || !saida) {
+        this.diariasDias = 0;
+        return;
+      }
+      const msDia = 24 * 60 * 60 * 1000;
+      const diff = Math.floor((saida.getTime() - entrada.getTime()) / msDia);
+      this.diariasDias = diff >= 0 ? (diff + 1) : 0;
+    },
+
+    confirmarDiarias(cobrar) {
+      this.cobrarDiarias = !!cobrar;
+      this.modalDiariasAberto = false;
+    },
+
+    get totalItens() {
+      const existentes = document.querySelectorAll('.item-form-row:not(.deleted)').length;
+      return existentes + this.novosItens.length;
+    },
+
+    get totalTerceiros() {
+      const existentes = document.querySelectorAll('.terc-form-row:not(.deleted)').length;
+      return existentes + this.novosTerceiros.length;
+    },
+
+    adicionarItem() {
+      this.novosItens.push({ descricao: '', etapa: '', horas_previstas: '', valor: '', retrabalho: false });
+      this.$nextTick(() => { this.atualizarSelects(); });
+    },
+
+    removerNovoItem(idx) {
+      this.novosItens.splice(idx, 1);
+      this.$nextTick(() => { this.recalcular(); this.atualizarSelects(); });
+    },
+
+    adicionarTerceiro() {
+      this.novosTerceiros.push({ descricao: '', fornecedor: '', valor: '' });
+      this.$nextTick(() => { this.recalcular(); });
+    },
+
+    removerNovoTerceiro(idx) {
+      this.novosTerceiros.splice(idx, 1);
+      this.$nextTick(() => { this.recalcular(); });
+    },
+
+    removerItemNovo(row) {
+      row.style.display = 'none';
+      row.classList.add('deleted');
+      row.querySelectorAll('input, select, textarea').forEach(el => {
+        if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+        else el.value = '';
+        el.required = false;
+        el.removeAttribute('required');
+      });
+      this.recalcular();
+      this.atualizarSelects();
+    },
+
+    removerItemExistente(event, rowClass = '.item-form-row') {
+      const btn = event.currentTarget;
+      const row = btn.closest(rowClass);
+      const deleteCheckbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+      if (deleteCheckbox) {
+        deleteCheckbox.checked = true;
+      }
+      row.classList.add('deleted');
+      row.style.opacity = '0.3';
+      
+      // Remover restrição HTML5 para não bloquear o salvamento
+      row.querySelectorAll('input, select, textarea').forEach(el => {
+        el.required = false;
+        el.removeAttribute('required');
+      });
+
+      // Ocultar o input de valor para não somar
+      const valorInput = row.querySelector('.item-valor-input, .item-terceiro-valor');
+      if (valorInput) valorInput.dataset.deleted = 'true';
+      btn.innerHTML = '<i class="fas fa-undo text-yellow-400"></i>';
+      btn.title = 'Desfazer';
+      btn.onclick = () => this.restaurarItem(row, deleteCheckbox, valorInput, btn);
+      this.recalcular();
+      this.atualizarSelects();
+    },
+
+    restaurarItem(row, checkbox, valorInput, btn) {
+      checkbox.checked = false;
+      row.classList.remove('deleted');
+      row.style.opacity = '1';
+      if (valorInput) delete valorInput.dataset.deleted;
+      btn.innerHTML = '<i class="fas fa-times-circle"></i>';
+      btn.title = 'Remover';
+      const rowClass = row.classList.contains('terc-form-row') ? '.terc-form-row' : '.item-form-row';
+      btn.onclick = (e) => this.removerItemExistente(e, rowClass);
+      this.recalcular();
+      this.atualizarSelects();
+    },
+
+    selectRenders: 0, // variável reativa para forçar reavaliação de isEtapaSelecionada
+
+    isEtapaSelecionada(etapaId, currentIdx, trigger) {
+      // Retorna true se a etapaId estiver sendo usada em OUTROS inputs
+      let selecionadas = [];
+      
+      // Captura do DOM os selects estáticos listados pelo Django
+      document.querySelectorAll('.etapa-select').forEach(el => {
+        if (el.closest('.item-form-row') && el.closest('.item-form-row').classList.contains('deleted')) return;
+        // Não conta no DOM os selects iterados nativamente pelo Alpine via novosItens para evitar duplicação ou loops
+        if (el.closest('.novo-item')) return;
+        
+        if (el.value) selecionadas.push(parseInt(el.value));
+      });
+
+      // Captura diretamente do array nativo do Alpine
+      this.novosItens.forEach((it, idx) => {
+        if (it.etapa && idx !== currentIdx) {
+          selecionadas.push(parseInt(it.etapa));
+        }
+      });
+      
+      return selecionadas.includes(parseInt(etapaId));
+    },
+
+    atualizarSelects() {
+      // 1. Atualiza todos os options estáticos nativos do Django
+      let selecionadas = [];
+      
+      document.querySelectorAll('.etapa-select').forEach(el => {
+        if (el.closest('.item-form-row') && el.closest('.item-form-row').classList.contains('deleted')) return;
+        if (el.value) selecionadas.push(parseInt(el.value));
+      });
+
+      this.novosItens.forEach(it => {
+        if (it.etapa) selecionadas.push(parseInt(it.etapa));
+      });
+
+      document.querySelectorAll('.item-form-row:not(.deleted) .etapa-select').forEach(select => {
+        let currentVal = parseInt(select.value);
+        Array.from(select.options).forEach(opt => {
+          let optVal = parseInt(opt.value);
+          if (optVal && optVal !== currentVal && selecionadas.includes(optVal)) {
+            opt.disabled = true;
+          } else {
+            opt.disabled = false;
+          }
+        });
+      });
+
+      // 2. Toca na variável reativa para o Alpine re-renderizar o :disabled dos novos inputs
+      this.selectRenders++;
+    },
+
+    recalcular() {
+      let sub = 0;
+      let preju = 0;
+
+      // Itens existentes do formset (não deletados)
+      document.querySelectorAll('.item-valor-input').forEach(el => {
+        if (el.dataset.deleted) return;
+        const row = el.closest('.item-form-row');
+        const chk = row ? row.querySelector('.item-retrabalho') : null;
+        const v = parseFloat(el.value) || 0;
+        if (chk && chk.checked) preju += v;
+        else sub += v;
+      });
+
+      document.querySelectorAll('.item-terceiro-valor').forEach(el => {
+        if (!el.dataset.deleted) {
+          sub += parseFloat(el.value) || 0;
+        }
+      });
+
+      // Novos itens
+      this.novosItens.forEach(item => {
+        const v = parseFloat(item.valor) || 0;
+        if (item.retrabalho) preju += v;
+        else sub += v;
+      });
+
+      // Novos parceiros
+      this.novosTerceiros.forEach(terc => {
+        sub += parseFloat(terc.valor) || 0;
+      });
+
+      this.subtotal = sub;
+      this.prejuizoRetrabalho = preju;
+      const desc = parseFloat(this.desconto) || 0;
+      this.total = Math.max(0, sub - desc);
+    },
+  };
+}
+</script>
+{% endblock %}
