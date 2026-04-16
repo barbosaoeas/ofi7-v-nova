@@ -1,4 +1,4 @@
-# Sistema de Gestão de Oficina
+# Sistema de Gestão de Oficina (OFI7)
 
 Sistema completo de gestão para oficinas de funilaria e pintura, desenvolvido 100% com Django.
 
@@ -10,9 +10,10 @@ Sistema completo de gestão para oficinas de funilaria e pintura, desenvolvido 1
 - **funcionarios** - Usuários e perfis
 - **orcamentos** - Orçamentos e itens
 - **ordens** - Ordens de Serviço e Etapas
-- **producao** - Controle de Kanban
+- **kanban** - Kanban de produção, agenda e “minhas tarefas”
 - **pecas** - Controle de peças
 - **comissoes** - Comissões automáticas
+- **dashboard** - Indicadores, relatórios e configurações do sistema
 
 ### Princípios
 ✅ Lógica Centralizada = Toda regra de negócio no Backend  
@@ -20,6 +21,11 @@ Sistema completo de gestão para oficinas de funilaria e pintura, desenvolvido 1
 ✅ Frontend Web = Django Templates + Tailwind CSS + HTMX  
 
 ## 🚀 Setup do Projeto
+
+### Método rápido (Windows)
+- Use os scripts: veja [INSTRUCOES_SETUP.md](INSTRUCOES_SETUP.md) e rode `setup.bat`.
+
+### Método manual (recomendado para dev)
 
 ### 1. Criar ambiente virtual
 
@@ -32,7 +38,7 @@ venv\Scripts\activate  # Windows
 ### 2. Instalar dependências
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 ### 3. Configurar ambiente
@@ -68,6 +74,9 @@ python manage.py createsuperuser
 ```bash
 python manage.py runserver
 ```
+
+## 🎨 Frontend (Tailwind)
+O projeto usa Django Templates + Tailwind. Se você precisar configurar/atualizar o Tailwind via django-tailwind, existe um helper: `instalar_frontend.bat`.
 
 ## 🔄 Fluxo Principal
 
@@ -111,4 +120,3 @@ python manage.py runserver
 - HTMX
 - Tailwind CSS
 - PostgreSQL (produção) / SQLite (dev)
-
