@@ -456,7 +456,7 @@ class SessaoService:
             return sessao
 
     @staticmethod
-    def pausar_sessao(etapa, funcionario):
+    def pausar_sessao(etapa, funcionario, close_at=None, reprogramar_para=None):
         from decimal import Decimal
 
         with transaction.atomic():
@@ -473,17 +473,25 @@ class SessaoService:
             if sessao.funcionario_id != funcionario.id and not pode_intervir:
                 raise ValueError('Sessão ativa pertence a outro colaborador.')
 
-            duracao = sessao.fechar()
+            duracao = sessao.fechar(close_at=close_at)
             horas_adicionadas = Decimal(str(round(float(duracao) / 60, 4)))
             etapa_db = OrdemEtapa.objects.select_for_update().get(pk=etapa.pk)
             etapa_db.horas_gastas_real = (etapa_db.horas_gastas_real or Decimal('0')) + horas_adicionadas
             etapa_db.status = 'programado'
-            etapa_db.save(update_fields=['horas_gastas_real', 'status'])
+            update_fields = ['horas_gastas_real', 'status']
+            if reprogramar_para:
+                etapa_db.data_programada = reprogramar_para
+                update_fields.append('data_programada')
+            etapa_db.save(update_fields=update_fields)
+            try:
+                OrdemServicoService.atualizar_status_ordem(etapa_db.ordem)
+            except Exception:
+                pass
 
             return sessao
 
     @staticmethod
-    def finalizar_sessao(etapa, funcionario):
+    def finalizar_sessao(etapa, funcionario, close_at=None):
         from decimal import Decimal
 
         with transaction.atomic():
@@ -500,7 +508,7 @@ class SessaoService:
             etapa_db = OrdemEtapa.objects.select_for_update().select_related('ordem').get(pk=etapa.pk)
 
             if sessao:
-                duracao = sessao.fechar()
+                duracao = sessao.fechar(close_at=close_at)
                 horas_adicionadas = Decimal(str(round(float(duracao) / 60, 4)))
                 etapa_db.horas_gastas_real = (etapa_db.horas_gastas_real or Decimal('0')) + horas_adicionadas
 
@@ -512,3 +520,43 @@ class SessaoService:
             OrdemServicoService.atualizar_status_ordem(etapa_db.ordem)
 
             return etapa_db
+
+    @staticmethod
+    def _proximo_dia_util(d):
+        from datetime import timedelta
+        dia = d + timedelta(days=1)
+        while dia.weekday() >= 5:
+            dia = dia + timedelta(days=1)
+        return dia
+
+    @staticmethod
+    def _fim_expediente_aware(d):
+        from datetime import datetime, time
+        from django.utils import timezone
+        tz = timezone.get_current_timezone()
+        return timezone.make_aware(datetime.combine(d, time(17, 48)), tz)
+
+    @staticmethod
+    def auto_pausar_sessoes_sem_extra():
+        from django.utils import timezone
+
+        agora = timezone.now()
+        sessoes = SessaoTrabalho.objects.select_related('etapa', 'etapa__ordem', 'funcionario').filter(
+            fim__isnull=True,
+            etapa__permitir_horas_extras=False,
+        )
+
+        total = 0
+        for s in sessoes:
+            try:
+                inicio_local = timezone.localtime(s.inicio).date()
+                fim_expediente = SessaoService._fim_expediente_aware(inicio_local)
+                if agora < fim_expediente:
+                    continue
+                prox = SessaoService._proximo_dia_util(inicio_local)
+                SessaoService.pausar_sessao(s.etapa, s.funcionario, close_at=fim_expediente, reprogramar_para=prox)
+                total += 1
+            except Exception:
+                continue
+
+        return total

@@ -8,6 +8,8 @@ from django.core.exceptions import ValidationError
 from .models import Orcamento, OrcamentoItem, OrcamentoServicoTerceiro
 from apps.clientes.models import Cliente
 from apps.veiculos.models import Veiculo
+from apps.pecas.models import Peca
+from apps.pecas.models import CatalogoPeca
 
 
 class OrcamentoForm(forms.ModelForm):
@@ -222,10 +224,10 @@ OrcamentoItemFormSet = inlineformset_factory(
     Orcamento,
     OrcamentoItem,
     form=OrcamentoItemForm,
-    extra=1,
+    extra=0,
     can_delete=True,
-    min_num=1,
-    validate_min=True,
+    min_num=0,
+    validate_min=False,
 )
 
 
@@ -266,6 +268,130 @@ class OrcamentoServicoTerceiroForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['fornecedor'].empty_label = 'Selecione o Fornecedor'
+
+
+class OrcamentoPecaForm(forms.ModelForm):
+    catalogo = forms.ModelChoiceField(
+        queryset=CatalogoPeca.objects.filter(ativo=True).order_by('descricao'),
+        required=False,
+        empty_label='Selecione a peça...',
+        widget=forms.Select(attrs={
+            'class': (
+                'w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 '
+                'text-gray-200 text-sm focus:outline-none '
+                'focus:border-yellow-400/60 transition item-peca-catalogo'
+            ),
+        }),
+    )
+
+    class Meta:
+        model = Peca
+        fields = [
+            'descricao',
+            'fornecedor_tipo',
+            'quantidade',
+            'valor_custo',
+            'percentual_lucro',
+            'valor_venda',
+        ]
+        widgets = {
+            'descricao': forms.HiddenInput(attrs={
+                'class': 'item-peca-descricao'
+            }),
+            'fornecedor_tipo': forms.Select(attrs={
+                'class': (
+                    'w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 '
+                    'text-gray-200 text-sm focus:outline-none '
+                    'focus:border-yellow-400/60 transition item-peca-tipo'
+                ),
+            }),
+            'quantidade': forms.NumberInput(attrs={
+                'class': (
+                    'w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 '
+                    'text-gray-200 text-sm text-center focus:outline-none '
+                    'focus:border-yellow-400/60 transition item-peca-qtd'
+                ),
+                'min': '1',
+                'step': '1',
+            }),
+            'valor_custo': forms.NumberInput(attrs={
+                'class': (
+                    'w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 '
+                    'text-gray-200 text-sm text-right focus:outline-none '
+                    'focus:border-yellow-400/60 transition item-peca-custo'
+                ),
+                'placeholder': '0.00',
+                'step': '0.01',
+                'min': '0',
+            }),
+            'percentual_lucro': forms.HiddenInput(attrs={
+                'class': 'item-peca-lucro',
+            }),
+            'valor_venda': forms.NumberInput(attrs={
+                'class': (
+                    'w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 '
+                    'text-gray-200 text-sm text-right focus:outline-none '
+                    'focus:border-yellow-400/60 transition item-peca-venda'
+                ),
+                'placeholder': '0.00',
+                'step': '0.01',
+                'readonly': 'readonly',
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['descricao'].required = False
+        self.fields['fornecedor_tipo'].required = False
+        self.fields['quantidade'].required = False
+        self.fields['valor_custo'].required = False
+        self.fields['percentual_lucro'].required = False
+        try:
+            if self.instance and getattr(self.instance, 'descricao', None):
+                item = CatalogoPeca.objects.filter(descricao=self.instance.descricao).first()
+                if item:
+                    self.fields['catalogo'].initial = item
+        except Exception:
+            pass
+        self.fields['descricao'].label = 'Peça'
+        self.fields['fornecedor_tipo'].label = 'Fornecedor'
+        self.fields['quantidade'].label = 'Qtd'
+        self.fields['valor_custo'].label = 'Custo'
+        self.fields['percentual_lucro'].label = 'Lucro (%)'
+        self.fields['valor_venda'].label = 'Venda'
+        self.fields['catalogo'].label = 'Peça'
+
+    def clean(self):
+        cleaned = super().clean()
+        if not self.has_changed() and not (self.instance and self.instance.pk):
+            return cleaned
+
+        catalogo = cleaned.get('catalogo')
+        if catalogo:
+            cleaned['descricao'] = catalogo.descricao
+            if not cleaned.get('fornecedor_tipo'):
+                cleaned['fornecedor_tipo'] = catalogo.fornecedor_tipo
+            if not cleaned.get('quantidade'):
+                cleaned['quantidade'] = catalogo.quantidade
+            if cleaned.get('valor_custo') in [None, '']:
+                cleaned['valor_custo'] = catalogo.valor_custo
+            if cleaned.get('percentual_lucro') in [None, '']:
+                cleaned['percentual_lucro'] = catalogo.percentual_lucro
+            return cleaned
+        if self.instance and self.instance.pk and getattr(self.instance, 'descricao', None):
+            cleaned['descricao'] = self.instance.descricao
+            return cleaned
+        raise ValidationError({'catalogo': 'Selecione a peça.'})
+
+
+OrcamentoPecaFormSet = inlineformset_factory(
+    Orcamento,
+    Peca,
+    form=OrcamentoPecaForm,
+    fk_name='orcamento',
+    extra=0,
+    can_delete=True,
+)
 
 
 OrcamentoTerceiroFormSet = inlineformset_factory(

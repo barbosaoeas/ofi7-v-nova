@@ -12,7 +12,8 @@ from apps.ordens.models import OrdemServico, OrdemEtapa
 from apps.clientes.models import Cliente
 from apps.veiculos.models import Veiculo
 from apps.comissoes.models import Comissao
-from apps.orcamentos.models import Orcamento, OrcamentoItem
+from apps.orcamentos.models import Orcamento, OrcamentoItem, OrcamentoServicoTerceiro
+from apps.pecas.models import Peca
 from .models import ConfiguracaoSistema
 
 
@@ -84,12 +85,33 @@ def dashboard(request):
         data_entrega__date__lte=data_fim,
     ).count()
 
-    faturamento_entregue_periodo = OrdemEtapa.objects.filter(
-        ordem__status='entregue',
-        ordem__data_entrega__isnull=False,
-        ordem__data_entrega__date__gte=data_inicio,
-        ordem__data_entrega__date__lte=data_fim,
+    ordens_entregues_periodo = OrdemServico.objects.filter(
+        status='entregue',
+        data_entrega__isnull=False,
+        data_entrega__date__gte=data_inicio,
+        data_entrega__date__lte=data_fim,
+    )
+
+    faturamento_entregue_servicos = OrdemEtapa.objects.filter(
+        ordem__in=ordens_entregues_periodo,
+        ordem__orcamento__status__in=['aprovado', 'entregue'],
     ).aggregate(total=Sum('valor_servico'))['total'] or 0
+
+    faturamento_entregue_pecas = Peca.objects.filter(
+        ordem__in=ordens_entregues_periodo,
+        fornecedor_tipo='escritorio',
+    ).aggregate(total=Sum('valor_venda'))['total'] or 0
+
+    faturamento_entregue_terceiros = OrcamentoServicoTerceiro.objects.filter(
+        orcamento__ordem_servico__in=ordens_entregues_periodo,
+        orcamento__status__in=['aprovado', 'entregue'],
+    ).aggregate(total=Sum('valor'))['total'] or 0
+
+    faturamento_entregue_total = (
+        faturamento_entregue_servicos
+        + faturamento_entregue_pecas
+        + faturamento_entregue_terceiros
+    )
 
     # ── Etapas atuais (sem filtro de período — situação atual) ───────
     etapas_em_andamento = OrdemEtapa.objects.filter(status='em_andamento').count()
@@ -147,7 +169,10 @@ def dashboard(request):
         'os_abertas': os_abertas,
         'os_em_andamento': os_em_andamento,
         'os_concluidas_periodo': os_concluidas_periodo,
-        'faturamento_entregue_periodo': faturamento_entregue_periodo,
+        'faturamento_entregue_total': faturamento_entregue_total,
+        'faturamento_entregue_servicos': faturamento_entregue_servicos,
+        'faturamento_entregue_pecas': faturamento_entregue_pecas,
+        'faturamento_entregue_terceiros': faturamento_entregue_terceiros,
 
         # Etapas
         'etapas_em_andamento': etapas_em_andamento,

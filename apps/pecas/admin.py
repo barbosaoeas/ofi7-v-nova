@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Peca
+from .models import Peca, CatalogoPeca
 
 
 @admin.register(Peca)
@@ -13,3 +13,9 @@ class PecaAdmin(admin.ModelAdmin):
         return '⚠️ Sim' if obj.esta_atrasada else 'Não'
     esta_atrasada.short_description = 'Atrasada'
 
+
+@admin.register(CatalogoPeca)
+class CatalogoPecaAdmin(admin.ModelAdmin):
+    list_display = ['descricao', 'fornecedor_tipo', 'quantidade', 'valor_custo', 'percentual_lucro', 'ativo', 'criado_em']
+    list_filter = ['ativo', 'fornecedor_tipo']
+    search_fields = ['descricao']

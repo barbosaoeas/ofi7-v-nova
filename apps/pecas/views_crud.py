@@ -53,7 +53,17 @@ def peca_create(request):
             messages.success(request, f'Peça "{peca.descricao}" cadastrada com sucesso!')
             return redirect('pecas:list')
     else:
-        form = PecaForm()
+        initial = {}
+        orcamento_id = request.GET.get('orcamento')
+        veiculo_id = request.GET.get('veiculo')
+        ordem_id = request.GET.get('ordem')
+        if orcamento_id:
+            initial['orcamento'] = orcamento_id
+        if veiculo_id:
+            initial['veiculo'] = veiculo_id
+        if ordem_id:
+            initial['ordem'] = ordem_id
+        form = PecaForm(initial=initial)
     
     context = {'form': form, 'title': 'Nova Peça'}
     return render(request, 'pecas/peca_form.html', context)

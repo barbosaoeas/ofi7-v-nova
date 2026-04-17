@@ -78,6 +78,29 @@ python manage.py runserver
 ## 🎨 Frontend (Tailwind)
 O projeto usa Django Templates + Tailwind. Se você precisar configurar/atualizar o Tailwind via django-tailwind, existe um helper: `instalar_frontend.bat`.
 
+## ⬆️ Subir atualizações para o Git
+
+### Opção 1: 1 comando (recomendado)
+
+- Windows:
+  ```powershell
+  .\scripts\push.ps1 "Mensagem do commit"
+  ```
+- Linux:
+  ```bash
+  ./scripts/push.sh "Mensagem do commit"
+  ```
+
+### Opção 2: automático ao commitar
+
+Ativa o hook do repositório:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Depois disso, sempre que fizer `git commit`, o projeto executa `git push` automaticamente.
+
 ## 🔄 Fluxo Principal
 
 1. **Criar orçamento** → Inserir serviços com valores

@@ -314,11 +314,19 @@ class SessaoTrabalho(models.Model):
             return Decimal(str(round(delta.total_seconds() / 60, 2)))
         return self.calcular_minutos_expediente(self.inicio, fim)
 
-    def fechar(self):
+    def fechar(self, close_at=None):
         """Fecha a sessão e calcula duração em minutos."""
         from django.utils import timezone
         from decimal import Decimal
-        self.fim = timezone.now()
+        fim = close_at or timezone.now()
+        try:
+            if timezone.is_naive(fim):
+                fim = timezone.make_aware(fim, timezone.get_current_timezone())
+        except Exception:
+            pass
+        if fim < self.inicio:
+            fim = self.inicio
+        self.fim = fim
         if getattr(self.etapa, 'permitir_horas_extras', False):
             delta = self.fim - self.inicio
             self.duracao_minutos = Decimal(str(round(delta.total_seconds() / 60, 2)))

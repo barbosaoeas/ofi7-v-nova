@@ -12,8 +12,9 @@ from uuid import uuid4
 
 from apps.veiculos.models import Veiculo
 from apps.clientes.models import Cliente
+from apps.pecas.models import CatalogoPeca
 from .models import Orcamento, OrcamentoItem, EtapaPadrao
-from .forms import OrcamentoForm, OrcamentoItemFormSet, OrcamentoTerceiroFormSet
+from .forms import OrcamentoForm, OrcamentoItemFormSet, OrcamentoTerceiroFormSet, OrcamentoPecaFormSet
 
 
 # ─────────────────────────── LISTAGEM ───────────────────────────
@@ -84,8 +85,9 @@ def orcamento_create(request):
         form = OrcamentoForm(request.POST)
         formset = OrcamentoItemFormSet(request.POST)
         terceiro_formset = OrcamentoTerceiroFormSet(request.POST)
+        peca_formset = OrcamentoPecaFormSet(request.POST)
 
-        if form.is_valid() and formset.is_valid() and terceiro_formset.is_valid():
+        if form.is_valid() and formset.is_valid() and terceiro_formset.is_valid() and peca_formset.is_valid():
             with transaction.atomic():
                 orcamento = form.save(commit=False)
                 orcamento.criado_por = request.user
@@ -96,6 +98,16 @@ def orcamento_create(request):
                 
                 terceiro_formset.instance = orcamento
                 terceiro_formset.save()
+
+                peca_formset.instance = orcamento
+                pecas = peca_formset.save(commit=False)
+                for p in pecas:
+                    p.solicitado_por = request.user
+                    p.orcamento = orcamento
+                    p.veiculo = orcamento.veiculo
+                    p.save()
+                for obj in peca_formset.deleted_objects:
+                    obj.delete()
 
                 if orcamento.status in ['aprovado', 'retrabalho']:
                     from apps.ordens.services import OrdemServicoService
@@ -115,21 +127,37 @@ def orcamento_create(request):
         form = OrcamentoForm()
         formset = OrcamentoItemFormSet()
         terceiro_formset = OrcamentoTerceiroFormSet()
+        peca_formset = OrcamentoPecaFormSet()
         token_atual = uuid4().hex
         request.session['orcamento_create_token'] = token_atual
 
     etapas = list(EtapaPadrao.objects.filter(ativo=True).values('id', 'nome').order_by('ordem_default', 'nome'))
     fornecedores = list(Cliente.objects.filter(categoria__in=['fornecedor', 'ambos'], ativo=True).values('id', 'nome', 'atividade_fornecedor').order_by('nome'))
+    catalogo_pecas = CatalogoPeca.objects.filter(ativo=True).order_by('descricao')
+    catalogo_pecas_json = json.dumps([
+        {
+            'id': p.id,
+            'descricao': p.descricao,
+            'fornecedor_tipo': p.fornecedor_tipo,
+            'quantidade': p.quantidade,
+            'valor_custo': str(p.valor_custo) if p.valor_custo is not None else '',
+            'percentual_lucro': str(p.percentual_lucro) if p.percentual_lucro is not None else '30.00',
+        }
+        for p in catalogo_pecas
+    ])
     
     context = {
         'form': form,
         'formset': formset,
         'terceiro_formset': terceiro_formset,
+        'peca_formset': peca_formset,
         'titulo': 'Novo Orçamento',
         'is_create': True,
         'submit_token': token_atual,
         'etapas_json': json.dumps(etapas),
         'fornecedores_json': json.dumps(fornecedores),
+        'catalogo_pecas': catalogo_pecas,
+        'catalogo_pecas_json': catalogo_pecas_json,
     }
     return render(request, 'orcamentos/orcamento_form.html', context)
 
@@ -169,12 +197,22 @@ def orcamento_update(request, pk):
         form = OrcamentoForm(request.POST, instance=orcamento)
         formset = OrcamentoItemFormSet(request.POST, instance=orcamento)
         terceiro_formset = OrcamentoTerceiroFormSet(request.POST, instance=orcamento)
+        peca_formset = OrcamentoPecaFormSet(request.POST, instance=orcamento)
 
-        if form.is_valid() and formset.is_valid() and terceiro_formset.is_valid():
+        if form.is_valid() and formset.is_valid() and terceiro_formset.is_valid() and peca_formset.is_valid():
             with transaction.atomic():
                 orcamento_salvo = form.save()
                 formset.save()
                 terceiro_formset.save()
+                pecas = peca_formset.save(commit=False)
+                for p in pecas:
+                    if not p.solicitado_por_id:
+                        p.solicitado_por = request.user
+                    p.orcamento = orcamento_salvo
+                    p.veiculo = orcamento_salvo.veiculo
+                    p.save()
+                for obj in peca_formset.deleted_objects:
+                    obj.delete()
 
                 if orcamento_salvo.status in ['aprovado', 'retrabalho']:
                     tem_itens = orcamento_salvo.itens.exists()
@@ -197,19 +235,35 @@ def orcamento_update(request, pk):
         form = OrcamentoForm(instance=orcamento)
         formset = OrcamentoItemFormSet(instance=orcamento)
         terceiro_formset = OrcamentoTerceiroFormSet(instance=orcamento)
+        peca_formset = OrcamentoPecaFormSet(instance=orcamento)
 
     etapas = list(EtapaPadrao.objects.filter(ativo=True).values('id', 'nome').order_by('ordem_default', 'nome'))
     fornecedores = list(Cliente.objects.filter(categoria__in=['fornecedor', 'ambos'], ativo=True).values('id', 'nome', 'atividade_fornecedor').order_by('nome'))
+    catalogo_pecas = CatalogoPeca.objects.filter(ativo=True).order_by('descricao')
+    catalogo_pecas_json = json.dumps([
+        {
+            'id': p.id,
+            'descricao': p.descricao,
+            'fornecedor_tipo': p.fornecedor_tipo,
+            'quantidade': p.quantidade,
+            'valor_custo': str(p.valor_custo) if p.valor_custo is not None else '',
+            'percentual_lucro': str(p.percentual_lucro) if p.percentual_lucro is not None else '30.00',
+        }
+        for p in catalogo_pecas
+    ])
     
     context = {
         'form': form,
         'formset': formset,
         'terceiro_formset': terceiro_formset,
+        'peca_formset': peca_formset,
         'orcamento': orcamento,
         'titulo': f'Editar {orcamento.numero}',
         'is_create': False,
         'etapas_json': json.dumps(etapas),
         'fornecedores_json': json.dumps(fornecedores),
+        'catalogo_pecas': catalogo_pecas,
+        'catalogo_pecas_json': catalogo_pecas_json,
     }
     return render(request, 'orcamentos/orcamento_form.html', context)
 

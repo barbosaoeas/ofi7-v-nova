@@ -186,6 +186,22 @@ class Peca(models.Model):
 
         super().save(*args, **kwargs)
 
+        try:
+            descricao = (self.descricao or '').strip()
+            if descricao:
+                CatalogoPeca.objects.get_or_create(
+                    descricao=descricao,
+                    defaults={
+                        'ativo': True,
+                        'fornecedor_tipo': self.fornecedor_tipo or 'escritorio',
+                        'quantidade': self.quantidade or 1,
+                        'valor_custo': self.valor_custo,
+                        'percentual_lucro': self.percentual_lucro or Decimal('30.00'),
+                    },
+                )
+        except Exception:
+            pass
+
         # Reflete o atraso da peça no prazo de entrega da Ordem de Serviço
         if self.ordem and self.prazo_chegada:
             if not self.ordem.data_previsao_entrega or self.prazo_chegada > self.ordem.data_previsao_entrega:
@@ -196,3 +212,20 @@ class Peca(models.Model):
                     self.ordem.observacoes += obs
                 self.ordem.save()
 
+
+class CatalogoPeca(models.Model):
+    descricao = models.CharField('Descrição', max_length=200, unique=True)
+    fornecedor_tipo = models.CharField('Fornecedor padrão', max_length=15, choices=Peca.FORNECEDOR_TIPO_CHOICES, default='escritorio')
+    quantidade = models.IntegerField('Quantidade padrão', default=1)
+    valor_custo = models.DecimalField('Custo padrão', max_digits=10, decimal_places=2, null=True, blank=True)
+    percentual_lucro = models.DecimalField('Lucro padrão (%)', max_digits=5, decimal_places=2, default=Decimal('30.00'))
+    ativo = models.BooleanField('Ativo', default=True)
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Catálogo de Peça'
+        verbose_name_plural = 'Catálogo de Peças'
+        ordering = ['descricao']
+
+    def __str__(self):
+        return self.descricao

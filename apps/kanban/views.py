@@ -301,7 +301,7 @@ def entregar_ordem(request, ordem_id):
 
     try:
         orcamento = ordem.orcamento
-        if orcamento.status != 'entregue':
+        if orcamento.status not in ['entregue', 'retrabalho']:
             orcamento.status = 'entregue'
             orcamento.save(update_fields=['status'])
     except Exception:

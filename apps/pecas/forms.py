@@ -4,6 +4,8 @@ Formulários para Peças
 from django import forms
 from .models import Peca
 from apps.clientes.models import Cliente
+from apps.orcamentos.models import Orcamento
+from apps.ordens.models import OrdemServico
 
 
 class PecaForm(forms.ModelForm):
@@ -16,6 +18,32 @@ class PecaForm(forms.ModelForm):
             categoria__in=['fornecedor', 'ambos'],
             ativo=True
         )
+        orcamentos_ativos = Orcamento.objects.exclude(status__in=['entregue', 'rejeitado', 'cancelado'])
+        ordens_ativas = OrdemServico.objects.exclude(status__in=['concluida', 'entregue', 'cancelada'])
+
+        if self.instance and getattr(self.instance, 'orcamento_id', None):
+            orcamentos_ativos = orcamentos_ativos | Orcamento.objects.filter(id=self.instance.orcamento_id)
+        if self.instance and getattr(self.instance, 'ordem_id', None):
+            ordens_ativas = ordens_ativas | OrdemServico.objects.filter(id=self.instance.ordem_id)
+
+        self.fields['orcamento'].queryset = orcamentos_ativos.distinct().order_by('-id')
+        self.fields['ordem'].queryset = ordens_ativas.distinct().order_by('-id')
+
+    def clean_orcamento(self):
+        orcamento = self.cleaned_data.get('orcamento')
+        if not orcamento:
+            return orcamento
+        if orcamento.status in ['entregue', 'rejeitado', 'cancelado']:
+            raise forms.ValidationError('Orçamento encerrado. Selecione um orçamento ativo.')
+        return orcamento
+
+    def clean_ordem(self):
+        ordem = self.cleaned_data.get('ordem')
+        if not ordem:
+            return ordem
+        if ordem.status in ['concluida', 'entregue', 'cancelada']:
+            raise forms.ValidationError('OS encerrada. Selecione uma OS ativa.')
+        return ordem
 
     class Meta:
         model = Peca
