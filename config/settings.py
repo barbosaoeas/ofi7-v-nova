@@ -31,6 +31,8 @@ INSTALLED_APPS = [
      # bibliotecas externas
     'rest_framework',
     'drf_spectacular',
+    'django_htmx',
+    'widget_tweaks',
     
     # Local apps
     'apps.clientes',
