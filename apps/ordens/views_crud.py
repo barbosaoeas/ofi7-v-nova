@@ -41,51 +41,47 @@ def ordem_update(request, pk):
         form = OrdemServicoForm(request.POST, instance=ordem)
         formset = OrdemEtapaFormSet(request.POST, instance=ordem)
 
-        if form.is_valid() and formset.is_valid():
-            data_chegada = form.cleaned_data.get('data_chegada_veiculo') or ordem.data_chegada_veiculo
-
-            if data_chegada:
-                for f in formset.forms:
-                    if not getattr(f, 'cleaned_data', None):
-                        continue
-                    if f.cleaned_data.get('DELETE'):
-                        continue
-
-                    data_programada = f.cleaned_data.get('data_programada')
-                    status_etapa = f.cleaned_data.get('status')
-
-                    if data_programada and data_programada < data_chegada:
-                        f.add_error('data_programada', f'Data deve ser a partir de {data_chegada.strftime("%d/%m/%Y")} (chegada do veículo).')
-
-                    if status_etapa == 'programado' and not data_programada:
-                        f.add_error('data_programada', 'Informe uma data para programar.')
-
-                    if status_etapa == 'programado' and data_programada and data_programada < data_chegada:
-                        f.add_error('status', f'Não pode programar antes da chegada do veículo ({data_chegada.strftime("%d/%m/%Y")}).')
-
-                    if status_etapa in ['em_andamento', 'finalizada'] and hoje < data_chegada:
-                        f.add_error('status', f'Não pode iniciar/finalizar antes da chegada do veículo ({data_chegada.strftime("%d/%m/%Y")}).')
-
-            if any(f.errors for f in formset.forms):
-                messages.error(request, 'Corrija os erros abaixo para salvar a programação.')
-                context = {
-                    'form': form,
-                    'formset': formset,
-                    'ordem': ordem,
-                    'titulo': f'Programar {ordem.numero}',
-                    'chegada_futura': chegada_futura,
-                    'hoje': hoje,
-                }
-                return render(request, 'ordens/ordem_form.html', context)
-
-            with transaction.atomic():
-                form.save()
-                formset.save()
-            messages.success(request, f'Programação da OS {ordem.numero} salva com sucesso!')
-            # Pode voltar para o detalhe do orçamento ou uma lista de OS
-            return redirect('orcamentos:detail', pk=ordem.orcamento.pk)
+        if not form.is_valid():
+            messages.error(request, 'Corrija os erros abaixo para salvar a OS.')
         else:
-            messages.error(request, 'Corrija os erros abaixo para salvar a programação.')
+            if not formset.is_valid():
+                with transaction.atomic():
+                    ordem = form.save()
+                chegada_futura = bool(ordem.data_chegada_veiculo and ordem.data_chegada_veiculo > hoje)
+                messages.warning(request, 'Dados gerais da OS salvos. Corrija as etapas abaixo para salvar a programação.')
+            else:
+                data_chegada = form.cleaned_data.get('data_chegada_veiculo') or ordem.data_chegada_veiculo
+
+                if data_chegada:
+                    for f in formset.forms:
+                        if not getattr(f, 'cleaned_data', None):
+                            continue
+                        if f.cleaned_data.get('DELETE'):
+                            continue
+
+                        data_programada = f.cleaned_data.get('data_programada')
+                        status_etapa = f.cleaned_data.get('status')
+
+                        if data_programada and data_programada < data_chegada:
+                            f.add_error('data_programada', f'Data deve ser a partir de {data_chegada.strftime("%d/%m/%Y")} (chegada do veículo).')
+
+                        if status_etapa == 'programado' and not data_programada:
+                            f.add_error('data_programada', 'Informe uma data para programar.')
+
+                        if status_etapa == 'programado' and data_programada and data_programada < data_chegada:
+                            f.add_error('status', f'Não pode programar antes da chegada do veículo ({data_chegada.strftime("%d/%m/%Y")}).')
+
+                        if status_etapa in ['em_andamento', 'finalizada'] and hoje < data_chegada:
+                            f.add_error('status', f'Não pode iniciar/finalizar antes da chegada do veículo ({data_chegada.strftime("%d/%m/%Y")}).')
+
+                if any(f.errors for f in formset.forms):
+                    messages.error(request, 'Corrija os erros abaixo para salvar a programação.')
+                else:
+                    with transaction.atomic():
+                        form.save()
+                        formset.save()
+                    messages.success(request, f'Programação da OS {ordem.numero} salva com sucesso!')
+                    return redirect('orcamentos:detail', pk=ordem.orcamento.pk)
     else:
         form = OrdemServicoForm(instance=ordem)
         formset = OrdemEtapaFormSet(instance=ordem)

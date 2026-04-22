@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ revisao.numero }} — {{ orcamento.numero }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  @media print {
+    nav, footer, .no-print { display: none !important; }
+    body { background: white !important; }
+    .doc { border: none !important; background: white !important; box-shadow: none !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <div class="flex items-center justify-between gap-3 mb-4 no-print">
+    <a href="{% url 'orcamentos:detail' orcamento.pk %}"
+       class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50">
+      <i class="fas fa-arrow-left mr-2"></i> Voltar
+    </a>
+    <button onclick="window.print()"
+            class="px-4 py-2 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-800">
+      <i class="fas fa-print mr-2"></i> Imprimir
+    </button>
+  </div>
+
+  <div class="doc bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <div class="text-xs text-gray-500 font-bold uppercase tracking-wider">Termo de Revisão de Orçamento</div>
+        <div class="text-2xl font-black text-gray-900 font-mono">{{ revisao.numero }}</div>
+        <div class="text-sm text-gray-600 mt-1">
+          Referente ao orçamento <span class="font-mono font-bold">{{ orcamento.numero }}</span>
+          · {{ orcamento.cliente.nome }} · {{ orcamento.veiculo.placa }}
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="text-xs text-gray-500 font-bold uppercase tracking-wider">Data</div>
+        <div class="text-sm font-semibold text-gray-800">
+          {% if revisao.confirmado_em %}{{ revisao.confirmado_em|date:"d/m/Y H:i" }}{% else %}{{ revisao.criado_em|date:"d/m/Y H:i" }}{% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if revisao.motivo %}
+    <div class="mt-4 p-4 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-700">
+      <div class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">Motivo</div>
+      <div class="whitespace-pre-line">{{ revisao.motivo }}</div>
+    </div>
+    {% endif %}
+
+    <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="border border-gray-200 rounded-2xl overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm font-bold text-gray-800">Antes</div>
+        <div class="p-4 text-sm text-gray-800 space-y-2">
+          <div class="flex justify-between"><span class="text-gray-600">Entrada na oficina</span><span class="font-semibold">{{ antes.orcamento.data_agendada|default:"-" }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-600">Previsão de entrega</span><span class="font-semibold">{{ antes.orcamento.data_prevista_entrega|default:"-" }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-600">Validade</span><span class="font-semibold">{{ antes.orcamento.validade|default:"-" }}</span></div>
+        </div>
+      </div>
+
+      <div class="border border-gray-200 rounded-2xl overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm font-bold text-gray-800">Depois</div>
+        <div class="p-4 text-sm text-gray-800 space-y-2">
+          <div class="flex justify-between"><span class="text-gray-600">Entrada na oficina</span><span class="font-semibold">{{ depois.orcamento.data_agendada|default:"-" }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-600">Previsão de entrega</span><span class="font-semibold">{{ depois.orcamento.data_prevista_entrega|default:"-" }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-600">Validade</span><span class="font-semibold">{{ depois.orcamento.validade|default:"-" }}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6">
+      <div class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">Serviços (Etapas do Orçamento)</div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="overflow-x-auto rounded-xl border border-gray-200">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-200">
+              <tr class="text-left">
+                <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Etapa</th>
+                <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Descrição</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              {% for i in antes.itens %}
+              <tr>
+                <td class="px-4 py-3 font-semibold text-gray-900">{{ i.etapa|default:"-" }}</td>
+                <td class="px-4 py-3 text-gray-700">{{ i.descricao }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="2" class="px-4 py-6 text-center text-gray-500">Sem serviços.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-gray-200">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-200">
+              <tr class="text-left">
+                <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Etapa</th>
+                <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Descrição</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              {% for i in depois.itens %}
+              <tr>
+                <td class="px-4 py-3 font-semibold text-gray-900">{{ i.etapa|default:"-" }}</td>
+                <td class="px-4 py-3 text-gray-700">{{ i.descricao }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="2" class="px-4 py-6 text-center text-gray-500">Sem serviços.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6">
+      <div class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">Peças</div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="overflow-x-auto rounded-xl border border-gray-200">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-200">
+              <tr class="text-left">
+                <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Descrição</th>
+                <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Prazo</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              {% for p in antes.pecas %}
+              <tr>
+                <td class="px-4 py-3 font-semibold text-gray-900">{{ p.descricao }}</td>
+                <td class="px-4 py-3 text-gray-700">{{ p.prazo_chegada|default:"-" }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="2" class="px-4 py-6 text-center text-gray-500">Sem peças.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-gray-200">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-200">
+              <tr class="text-left">
+                <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Descrição</th>
+                <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Prazo</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              {% for p in depois.pecas %}
+              <tr>
+                <td class="px-4 py-3 font-semibold text-gray-900">{{ p.descricao }}</td>
+                <td class="px-4 py-3 text-gray-700">{{ p.prazo_chegada|default:"-" }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="2" class="px-4 py-6 text-center text-gray-500">Sem peças.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {% if antes.os or depois.os %}
+    <div class="mt-6">
+      <div class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">Programação (OS)</div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="border border-gray-200 rounded-2xl overflow-hidden">
+          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm font-bold text-gray-800">
+            Antes{% if antes.os %} — {{ antes.os.numero }}{% endif %}
+          </div>
+          <div class="p-4 text-sm text-gray-800">
+            {% if antes.os %}
+              <div class="flex justify-between"><span class="text-gray-600">Chegada</span><span class="font-semibold">{{ antes.os.data_chegada_veiculo|default:"-" }}</span></div>
+              <div class="flex justify-between"><span class="text-gray-600">Previsão</span><span class="font-semibold">{{ antes.os.data_previsao_entrega|default:"-" }}</span></div>
+              <div class="mt-3 text-xs text-gray-600 font-bold uppercase tracking-wider">Etapas</div>
+              <div class="mt-2 space-y-1">
+                {% for e in antes.os.etapas %}
+                  <div class="flex justify-between gap-3">
+                    <span class="font-semibold text-gray-900">{{ e.nome }}</span>
+                    <span class="text-gray-700">{{ e.funcionario|default:"-" }} · {{ e.data_programada|default:"-" }}</span>
+                  </div>
+                {% empty %}
+                  <div class="text-gray-500">Sem etapas.</div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="text-gray-500">Sem OS vinculada.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="border border-gray-200 rounded-2xl overflow-hidden">
+          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm font-bold text-gray-800">
+            Depois{% if depois.os %} — {{ depois.os.numero }}{% endif %}
+          </div>
+          <div class="p-4 text-sm text-gray-800">
+            {% if depois.os %}
+              <div class="flex justify-between"><span class="text-gray-600">Chegada</span><span class="font-semibold">{{ depois.os.data_chegada_veiculo|default:"-" }}</span></div>
+              <div class="flex justify-between"><span class="text-gray-600">Previsão</span><span class="font-semibold">{{ depois.os.data_previsao_entrega|default:"-" }}</span></div>
+              <div class="mt-3 text-xs text-gray-600 font-bold uppercase tracking-wider">Etapas</div>
+              <div class="mt-2 space-y-1">
+                {% for e in depois.os.etapas %}
+                  <div class="flex justify-between gap-3">
+                    <span class="font-semibold text-gray-900">{{ e.nome }}</span>
+                    <span class="text-gray-700">{{ e.funcionario|default:"-" }} · {{ e.data_programada|default:"-" }}</span>
+                  </div>
+                {% empty %}
+                  <div class="text-gray-500">Sem etapas.</div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="text-gray-500">Sem OS vinculada.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div>
+        <div class="border-t border-gray-300 pt-2 text-sm font-semibold text-gray-800">Assinatura do Proprietário / Responsável</div>
+        <div class="text-xs text-gray-500 mt-1">Declaro ciente e de acordo com as alterações descritas neste termo.</div>
+      </div>
+      <div>
+        <div class="border-t border-gray-300 pt-2 text-sm font-semibold text-gray-800">Oficina</div>
+        <div class="text-xs text-gray-500 mt-1">{{ sistema_config.nome_oficina|default:"" }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

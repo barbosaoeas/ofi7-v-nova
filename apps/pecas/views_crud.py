@@ -8,6 +8,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from .models import Peca
 from .forms import PecaForm
+from .services import PecaService
 
 
 @login_required
@@ -98,3 +99,23 @@ def peca_delete(request, pk):
     
     context = {'peca': peca}
     return render(request, 'pecas/peca_confirm_delete.html', context)
+
+
+@login_required
+def peca_marcar_recebida(request, pk):
+    if request.method != 'POST':
+        return redirect('pecas:update', pk=pk)
+
+    perfil = getattr(request.user, 'perfil', '')
+    pode_intervir = request.user.is_superuser or perfil in ['admin', 'gerente', 'supervisor', 'financeiro']
+    if not pode_intervir:
+        messages.error(request, 'Você não tem permissão para confirmar chegada de peça.')
+        return redirect(request.META.get('HTTP_REFERER', 'pecas:list'))
+
+    try:
+        PecaService.marcar_como_recebida(pk)
+        messages.success(request, 'Chegada confirmada. Peça marcada como recebida.')
+    except Exception as e:
+        messages.error(request, f'Erro ao confirmar chegada: {str(e)}')
+
+    return redirect(request.META.get('HTTP_REFERER', 'pecas:list'))

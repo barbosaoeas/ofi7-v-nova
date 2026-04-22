@@ -852,7 +852,8 @@ function orcamentoForm() {
             veiculoSelect.innerHTML = '<option value="">-- Selecione um cliente primeiro --</option>';
             return;
           }
-          fetch(`/orcamentos/veiculos-por-cliente/?cliente=${clienteId}`)
+          const veiculoAtual = veiculoSelect.value || '';
+          fetch(`/orcamentos/veiculos-por-cliente/?cliente=${clienteId}&veiculo_atual=${veiculoAtual}`)
             .then(r => r.text())
             .then(html => { veiculoSelect.innerHTML = html; });
         });

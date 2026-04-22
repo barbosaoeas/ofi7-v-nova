@@ -8,4 +8,5 @@ urlpatterns = [
     path('novo/', views_crud.peca_create, name='create'),
     path('<int:pk>/editar/', views_crud.peca_update, name='update'),
     path('<int:pk>/deletar/', views_crud.peca_delete, name='delete'),
+    path('<int:pk>/marcar-recebida/', views_crud.peca_marcar_recebida, name='marcar_recebida'),
 ]

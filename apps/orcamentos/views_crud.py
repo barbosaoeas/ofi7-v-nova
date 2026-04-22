@@ -7,14 +7,109 @@ from django.contrib import messages
 from django.db import transaction
 from django.http import HttpResponse
 from django.views.decorators.http import require_http_methods
+from django.utils import timezone
+from django.urls import reverse
 import json
 from uuid import uuid4
 
 from apps.veiculos.models import Veiculo
 from apps.clientes.models import Cliente
 from apps.pecas.models import CatalogoPeca
-from .models import Orcamento, OrcamentoItem, EtapaPadrao
-from .forms import OrcamentoForm, OrcamentoItemFormSet, OrcamentoTerceiroFormSet, OrcamentoPecaFormSet
+from .models import Orcamento, OrcamentoItem, EtapaPadrao, OrcamentoAditivo, OrcamentoRevisao
+from .forms import (
+    OrcamentoForm,
+    OrcamentoItemFormSet,
+    OrcamentoTerceiroFormSet,
+    OrcamentoPecaFormSet,
+    OrcamentoAditivoForm,
+    AditivoPecaFormSet,
+)
+
+def _snapshot_orcamento_para_revisao(orcamento):
+    def _date(d):
+        return d.isoformat() if d else None
+
+    itens = [
+        {
+            'id': i.id,
+            'descricao': i.descricao,
+            'etapa': i.etapa.nome if i.etapa else None,
+            'horas_previstas': str(i.horas_previstas) if i.horas_previstas is not None else None,
+            'valor': str(i.valor) if i.valor is not None else None,
+            'retrabalho': bool(getattr(i, 'retrabalho', False)),
+            'ordem': i.ordem,
+        }
+        for i in orcamento.itens.all().select_related('etapa')
+    ]
+
+    terceiros = [
+        {
+            'id': t.id,
+            'descricao': t.descricao,
+            'fornecedor': t.fornecedor.nome if t.fornecedor else None,
+            'valor': str(t.valor) if t.valor is not None else None,
+        }
+        for t in orcamento.servicos_terceiros.all().select_related('fornecedor')
+    ]
+
+    pecas = [
+        {
+            'id': p.id,
+            'descricao': p.descricao,
+            'fornecedor_tipo': p.fornecedor_tipo,
+            'fornecedor_nome': p.fornecedor_nome,
+            'quantidade': p.quantidade,
+            'valor_custo': str(p.valor_custo) if p.valor_custo is not None else None,
+            'percentual_lucro': str(p.percentual_lucro) if p.percentual_lucro is not None else None,
+            'valor_venda': str(p.valor_venda) if p.valor_venda is not None else None,
+            'prazo_chegada': _date(p.prazo_chegada),
+            'status': p.status,
+            'data_recebimento': p.data_recebimento.isoformat() if p.data_recebimento else None,
+            'aditivo': p.aditivo.numero if getattr(p, 'aditivo', None) else None,
+        }
+        for p in orcamento.pecas.all().select_related('aditivo')
+    ]
+
+    os_data = None
+    try:
+        os_obj = orcamento.ordem_servico
+        os_data = {
+            'id': os_obj.id,
+            'numero': os_obj.numero,
+            'status': os_obj.status,
+            'data_chegada_veiculo': _date(os_obj.data_chegada_veiculo),
+            'data_previsao_entrega': _date(os_obj.data_previsao_entrega),
+            'etapas': [
+                {
+                    'id': e.id,
+                    'nome': e.nome,
+                    'status': e.status,
+                    'data_programada': _date(e.data_programada),
+                    'funcionario': e.funcionario.nome_completo if e.funcionario else None,
+                    'auxiliares': [a.nome_completo for a in e.auxiliares.all()],
+                }
+                for e in os_obj.etapas.all().select_related('funcionario').prefetch_related('auxiliares').order_by('sequencia', 'id')
+            ],
+        }
+    except Exception:
+        os_data = None
+
+    return {
+        'orcamento': {
+            'id': orcamento.id,
+            'numero': orcamento.numero,
+            'status': orcamento.status,
+            'validade': _date(orcamento.validade),
+            'data_agendada': _date(orcamento.data_agendada),
+            'data_prevista_entrega': _date(orcamento.data_prevista_entrega),
+            'desconto': str(orcamento.desconto) if orcamento.desconto is not None else None,
+            'observacoes': orcamento.observacoes or '',
+        },
+        'itens': itens,
+        'terceiros': terceiros,
+        'pecas': pecas,
+        'os': os_data,
+    }
 
 
 # ─────────────────────────── LISTAGEM ───────────────────────────
@@ -33,7 +128,9 @@ def orcamento_list(request):
     if status_filtro:
         qs = qs.filter(status=status_filtro)
     else:
-        if filtro == 'aprovados':
+        if filtro == 'pendentes':
+            qs = qs.filter(status__in=['rascunho', 'enviado']).order_by('criado_em')
+        elif filtro == 'aprovados':
             qs = qs.filter(status='aprovado')
 
     # Busca textual
@@ -168,6 +265,19 @@ def orcamento_create(request):
 def orcamento_update(request, pk):
     """Edita um orçamento existente"""
     orcamento = get_object_or_404(Orcamento, pk=pk)
+    revisao_id = (request.GET.get('revisao') or request.session.get('orcamento_revisao_id') or '').strip()
+    revisao = None
+    if revisao_id:
+        try:
+            revisao = OrcamentoRevisao.objects.filter(
+                pk=int(revisao_id),
+                orcamento=orcamento,
+                confirmado_em__isnull=True,
+            ).first()
+        except Exception:
+            revisao = None
+    if revisao:
+        request.session['orcamento_revisao_id'] = str(revisao.id)
 
     # Bloqueia edição somente se aprovado E já tem OS com etapas criadas
     tem_os = False
@@ -179,7 +289,7 @@ def orcamento_update(request, pk):
     except Exception:
         pass
 
-    if orcamento.status not in ('rascunho', 'enviado'):
+    if not revisao and orcamento.status not in ('rascunho', 'enviado'):
         if orcamento.status in ('aprovado', 'retrabalho') and (not tem_os or os_vazia):
             # Permite editar: aprovado sem OS, ou com OS mas sem etapas ainda
             if os_vazia:
@@ -192,6 +302,8 @@ def orcamento_update(request, pk):
         elif orcamento.status not in ('aprovado', 'retrabalho', 'rascunho', 'enviado'):
             messages.warning(request, f'Orçamento com status "{orcamento.get_status_display()}" não pode ser editado.')
             return redirect('orcamentos:detail', pk=pk)
+    if revisao:
+        messages.info(request, f'🔁 Modo Revisão: você está editando este orçamento para registrar alterações ({revisao.numero}).')
 
     if request.method == 'POST':
         form = OrcamentoForm(request.POST, instance=orcamento)
@@ -214,7 +326,28 @@ def orcamento_update(request, pk):
                 for obj in peca_formset.deleted_objects:
                     obj.delete()
 
-                if orcamento_salvo.status in ['aprovado', 'retrabalho']:
+                if revisao:
+                    try:
+                        os_obj = orcamento_salvo.ordem_servico
+                        update_fields = []
+                        if orcamento_salvo.data_agendada and os_obj.data_chegada_veiculo != orcamento_salvo.data_agendada:
+                            os_obj.data_chegada_veiculo = orcamento_salvo.data_agendada
+                            update_fields.append('data_chegada_veiculo')
+                        if (
+                            orcamento_salvo.data_prevista_entrega
+                            and (
+                                not os_obj.data_previsao_entrega
+                                or orcamento_salvo.data_prevista_entrega > os_obj.data_previsao_entrega
+                            )
+                        ):
+                            os_obj.data_previsao_entrega = orcamento_salvo.data_prevista_entrega
+                            update_fields.append('data_previsao_entrega')
+                        if update_fields:
+                            os_obj.save(update_fields=update_fields)
+                    except Exception:
+                        pass
+
+                if not revisao and orcamento_salvo.status in ['aprovado', 'retrabalho']:
                     tem_itens = orcamento_salvo.itens.exists()
                     if tem_itens:
                         from apps.ordens.services import OrdemServicoService
@@ -228,6 +361,8 @@ def orcamento_update(request, pk):
                         messages.warning(request, '⚠️ Ainda sem etapas. Adicione etapas de serviço para gerar a OS.')
 
             messages.success(request, f'Orçamento {orcamento.numero} atualizado!')
+            if revisao:
+                return redirect('orcamentos:detail', pk=orcamento.pk)
             return redirect('orcamentos:list')
         else:
             messages.error(request, 'Corrija os erros abaixo.')
@@ -273,15 +408,193 @@ def orcamento_update(request, pk):
 @login_required
 def orcamento_detail(request, pk):
     """Visualiza o orçamento estilo invoice/proposta"""
+    from django.db.models import Prefetch
+    from apps.pecas.models import Peca
+
     orcamento = get_object_or_404(
         Orcamento.objects.select_related(
             'cliente', 'veiculo__modelo_veiculo__fabricante',
             'veiculo__cor_veiculo', 'criado_por'
-        ).prefetch_related('itens'),
+        ).prefetch_related(
+            'itens',
+            'aditivos',
+            'aditivos__pecas',
+            Prefetch(
+                'pecas',
+                queryset=Peca.objects.select_related('aditivo', 'etapa_bloqueada').order_by('-criado_em', '-id'),
+            ),
+        ),
         pk=pk
     )
-    context = {'orcamento': orcamento}
+    revisao_aberta = OrcamentoRevisao.objects.filter(
+        orcamento=orcamento,
+        confirmado_em__isnull=True,
+    ).order_by('-criado_em').first()
+    context = {'orcamento': orcamento, 'revisao_aberta': revisao_aberta}
     return render(request, 'orcamentos/orcamento_detail.html', context)
+
+
+@login_required
+@require_http_methods(['POST'])
+def orcamento_revisao_iniciar(request, pk):
+    orcamento = get_object_or_404(Orcamento, pk=pk)
+    url_editar = reverse('orcamentos:update', kwargs={'pk': pk})
+
+    revisao_aberta = OrcamentoRevisao.objects.filter(
+        orcamento=orcamento,
+        confirmado_em__isnull=True,
+    ).order_by('-criado_em').first()
+    if revisao_aberta:
+        request.session['orcamento_revisao_id'] = str(revisao_aberta.id)
+        return redirect(f"{url_editar}?revisao={revisao_aberta.id}")
+
+    snapshot_antes = _snapshot_orcamento_para_revisao(orcamento)
+    revisao = OrcamentoRevisao.objects.create(
+        orcamento=orcamento,
+        criado_por=request.user,
+        motivo=(request.POST.get('motivo') or '').strip(),
+        snapshot_antes=snapshot_antes,
+    )
+    request.session['orcamento_revisao_id'] = str(revisao.id)
+    return redirect(f"{url_editar}?revisao={revisao.id}")
+
+
+@login_required
+@require_http_methods(['POST'])
+def orcamento_revisao_confirmar(request, pk, revisao_id):
+    orcamento = get_object_or_404(Orcamento, pk=pk)
+    revisao = get_object_or_404(OrcamentoRevisao, pk=revisao_id, orcamento=orcamento)
+
+    if revisao.confirmado_em:
+        return redirect('orcamentos:revisao_imprimir', pk=pk, revisao_id=revisao.pk)
+
+    revisao.snapshot_depois = _snapshot_orcamento_para_revisao(orcamento)
+    revisao.confirmado_em = timezone.now()
+    revisao.save(update_fields=['snapshot_depois', 'confirmado_em'])
+    request.session.pop('orcamento_revisao_id', None)
+    return redirect('orcamentos:revisao_imprimir', pk=pk, revisao_id=revisao.pk)
+
+
+@login_required
+def orcamento_revisao_imprimir(request, pk, revisao_id):
+    orcamento = get_object_or_404(Orcamento.objects.select_related('cliente', 'veiculo'), pk=pk)
+    revisao = get_object_or_404(OrcamentoRevisao, pk=revisao_id, orcamento=orcamento)
+
+    depois = revisao.snapshot_depois or _snapshot_orcamento_para_revisao(orcamento)
+    antes = revisao.snapshot_antes or {}
+    return render(request, 'orcamentos/orcamento_revisao_print.html', {
+        'orcamento': orcamento,
+        'revisao': revisao,
+        'antes': antes,
+        'depois': depois,
+    })
+
+
+@login_required
+def orcamento_aditivo_pecas_create(request, pk):
+    orcamento = get_object_or_404(
+        Orcamento.objects.select_related('cliente', 'veiculo', 'criado_por').prefetch_related('aditivos'),
+        pk=pk
+    )
+
+    if orcamento.status not in ['aprovado', 'retrabalho']:
+        messages.error(request, 'Aditivo só pode ser criado para orçamento aprovado/retrabalho.')
+        return redirect('orcamentos:detail', pk=pk)
+
+    if not hasattr(orcamento, 'ordem_servico') or not orcamento.ordem_servico:
+        messages.error(request, 'Aditivo de peças exige uma OS gerada para vincular o controle de peças.')
+        return redirect('orcamentos:detail', pk=pk)
+
+    catalogo_pecas = CatalogoPeca.objects.filter(ativo=True).order_by('descricao')
+    catalogo_pecas_json = json.dumps([
+        {
+            'id': p.id,
+            'descricao': p.descricao,
+            'fornecedor_tipo': p.fornecedor_tipo,
+            'quantidade': p.quantidade,
+            'valor_custo': str(p.valor_custo) if p.valor_custo is not None else '',
+            'percentual_lucro': str(p.percentual_lucro) if p.percentual_lucro is not None else '30.00',
+        }
+        for p in catalogo_pecas
+    ])
+
+    if request.method == 'POST':
+        with transaction.atomic():
+            aditivo = OrcamentoAditivo.objects.create(orcamento=orcamento, criado_por=request.user)
+            form = OrcamentoAditivoForm(request.POST, instance=aditivo)
+            formset = AditivoPecaFormSet(request.POST, instance=aditivo)
+
+            if form.is_valid() and formset.is_valid():
+                tem_peca = any(
+                    f.cleaned_data
+                    and not f.cleaned_data.get('DELETE', False)
+                    and f.cleaned_data.get('catalogo')
+                    for f in formset.forms
+                )
+                if not tem_peca:
+                    aditivo.delete()
+                    messages.error(request, 'Adicione ao menos 1 peça no aditivo.')
+                    context = {
+                        'orcamento': orcamento,
+                        'form': form,
+                        'formset': formset,
+                        'catalogo_pecas': catalogo_pecas,
+                        'catalogo_pecas_json': catalogo_pecas_json,
+                    }
+                    return render(request, 'orcamentos/orcamento_aditivo_pecas_form.html', context)
+
+                aditivo = form.save()
+
+                pecas = formset.save(commit=False)
+                for peca in pecas:
+                    peca.solicitado_por = request.user
+                    peca.orcamento = orcamento
+                    peca.veiculo = orcamento.veiculo
+                    peca.ordem = orcamento.ordem_servico
+                    peca.aditivo = aditivo
+                    peca.save()
+                for obj in formset.deleted_objects:
+                    obj.delete()
+
+                messages.success(request, f'Aditivo {aditivo.numero} criado.')
+                return redirect('orcamentos:aditivo_imprimir', pk=orcamento.pk, aditivo_id=aditivo.pk)
+
+            messages.error(request, 'Corrija os erros do formulário.')
+            context = {
+                'orcamento': orcamento,
+                'form': form,
+                'formset': formset,
+                'catalogo_pecas': catalogo_pecas,
+                'catalogo_pecas_json': catalogo_pecas_json,
+            }
+            return render(request, 'orcamentos/orcamento_aditivo_pecas_form.html', context)
+
+    form = OrcamentoAditivoForm()
+    formset = AditivoPecaFormSet()
+    context = {
+        'orcamento': orcamento,
+        'form': form,
+        'formset': formset,
+        'catalogo_pecas': catalogo_pecas,
+        'catalogo_pecas_json': catalogo_pecas_json,
+    }
+    return render(request, 'orcamentos/orcamento_aditivo_pecas_form.html', context)
+
+
+@login_required
+def orcamento_aditivo_imprimir(request, pk, aditivo_id):
+    orcamento = get_object_or_404(Orcamento.objects.select_related('cliente', 'veiculo'), pk=pk)
+    aditivo = get_object_or_404(OrcamentoAditivo.objects.select_related('orcamento', 'criado_por'), pk=aditivo_id, orcamento=orcamento)
+
+    pecas = aditivo.pecas.all().order_by('-criado_em', '-id')
+    total = sum((p.valor_venda or 0) * (p.quantidade or 1) for p in pecas)
+    context = {
+        'orcamento': orcamento,
+        'aditivo': aditivo,
+        'pecas': pecas,
+        'total': total,
+    }
+    return render(request, 'orcamentos/orcamento_aditivo_print.html', context)
 
 
 # ─────────────────────────── EXCLUSÃO ───────────────────────────
@@ -426,12 +739,16 @@ def veiculos_por_cliente(request):
     if cliente_id:
         base = Veiculo.objects.filter(cliente_id=cliente_id)
         total_cliente = base.count()
-        veiculos = (
-            base.exclude(ordens__status__in=['aberta', 'em_andamento', 'aguardando_peca', 'concluida'])
+        veiculos_disponiveis = (
+            base.exclude(ordens__status__in=['aberta', 'em_andamento', 'aguardando_peca'])
             .select_related('modelo_veiculo__fabricante', 'cor_veiculo')
             .distinct()
-            .order_by('placa')
         )
+        selected_id = request.GET.get('veiculo_atual', '')
+        if selected_id:
+            veiculos = (veiculos_disponiveis | base.filter(pk=selected_id)).distinct().order_by('placa')
+        else:
+            veiculos = veiculos_disponiveis.order_by('placa')
 
     return render(request, 'orcamentos/_veiculos_options.html', {
         'veiculos': veiculos,

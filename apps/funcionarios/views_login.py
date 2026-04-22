@@ -81,6 +81,10 @@ def autenticar_view(request):
     if user is not None:
         if user.is_active and hasattr(user, 'ativo') and user.ativo:
             login(request, user)
+            
+            if hasattr(user, 'deve_mudar_senha') and user.deve_mudar_senha:
+                return redirect('funcionarios:mudar_senha')
+                
             next_url = request.POST.get('next') or request.GET.get('next') or 'dashboard:index'
             # Se next_url for uma URL relativa, redireciona direto
             if next_url.startswith('/'):
@@ -93,6 +97,36 @@ def autenticar_view(request):
 
     return redirect('funcionarios:login')
 
+
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def mudar_senha_view(request):
+    """
+    Tela para mudança de senha no primeiro acesso (ou quando sugerido/obrigado).
+    """
+    if request.method == 'POST':
+        nova_senha = request.POST.get('nova_senha', '').strip()
+        confirmar_senha = request.POST.get('confirmar_senha', '').strip()
+        
+        if not nova_senha or not confirmar_senha:
+            messages.error(request, 'Preencha as duas senhas.')
+        elif nova_senha != confirmar_senha:
+            messages.error(request, 'As senhas não coincidem.')
+        else:
+            user = request.user
+            user.set_password(nova_senha)
+            if hasattr(user, 'deve_mudar_senha'):
+                user.deve_mudar_senha = False
+            user.save()
+            
+            # Reconecta o usuário pois a mudança de senha invalida a sessão
+            login(request, user)
+            
+            messages.success(request, 'Senha alterada com sucesso!')
+            return redirect('dashboard:index')
+            
+    return render(request, 'funcionarios/mudar_senha.html')
 
 def logout_view(request):
     """Logout customizado"""

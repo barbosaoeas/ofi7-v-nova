@@ -45,6 +45,7 @@ class Funcionario(AbstractUser):
     
     # Status
     ativo = models.BooleanField('Ativo', default=True)
+    deve_mudar_senha = models.BooleanField('Deve Mudar Senha', default=True)
     foto = models.ImageField('Foto', upload_to='funcionarios/fotos/', null=True, blank=True)
     
     # Timestamps

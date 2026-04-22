@@ -316,7 +316,7 @@ class OrdemEtapaService:
             peca = PecaService.criar_peca_bloqueante(
                 etapa=etapa,
                 observacao=observacao_peca,
-                solicitado_por=etapa.funcionario
+                solicitado_por=etapa.funcionario or etapa.ordem.criado_por
             )
             resultado['peca_criada'] = peca
 

@@ -141,6 +141,82 @@ class Orcamento(models.Model):
         return total
 
 
+class OrcamentoAditivo(models.Model):
+    STATUS_CHOICES = [
+        ('rascunho', 'Rascunho'),
+        ('enviado', 'Enviado ao Cliente'),
+        ('ciente', 'Ciente (Aprovado pelo Cliente)'),
+    ]
+
+    orcamento = models.ForeignKey(
+        Orcamento,
+        on_delete=models.CASCADE,
+        related_name='aditivos',
+        verbose_name='Orçamento',
+    )
+    criado_por = models.ForeignKey(
+        'funcionarios.Funcionario',
+        on_delete=models.PROTECT,
+        related_name='aditivos_orcamento_criados',
+        verbose_name='Criado por',
+    )
+    numero = models.CharField('Número', max_length=20, unique=True, editable=False)
+    status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='rascunho')
+    observacoes = models.TextField('Observações', blank=True)
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Aditivo de Orçamento'
+        verbose_name_plural = 'Aditivos de Orçamento'
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f"{self.numero} ({self.orcamento.numero})"
+
+    def save(self, *args, **kwargs):
+        if not self.numero:
+            ultimo = OrcamentoAditivo.objects.order_by('-id').first()
+            proximo_numero = 1 if not ultimo else ultimo.id + 1
+            self.numero = f"ADT-{proximo_numero:06d}"
+        super().save(*args, **kwargs)
+
+
+class OrcamentoRevisao(models.Model):
+    orcamento = models.ForeignKey(
+        Orcamento,
+        on_delete=models.CASCADE,
+        related_name='revisoes',
+        verbose_name='Orçamento',
+    )
+    criado_por = models.ForeignKey(
+        'funcionarios.Funcionario',
+        on_delete=models.PROTECT,
+        related_name='revisoes_orcamento_criadas',
+        verbose_name='Criado por',
+    )
+    numero = models.CharField('Número', max_length=20, unique=True, editable=False)
+    motivo = models.TextField('Motivo da Revisão', blank=True)
+    snapshot_antes = models.JSONField('Snapshot Antes')
+    snapshot_depois = models.JSONField('Snapshot Depois', null=True, blank=True)
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+    confirmado_em = models.DateTimeField('Confirmado em', null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Revisão de Orçamento'
+        verbose_name_plural = 'Revisões de Orçamento'
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f"{self.numero} ({self.orcamento.numero})"
+
+    def save(self, *args, **kwargs):
+        if not self.numero:
+            ultimo = OrcamentoRevisao.objects.order_by('-id').first()
+            proximo_numero = 1 if not ultimo else ultimo.id + 1
+            self.numero = f"REV-{proximo_numero:06d}"
+        super().save(*args, **kwargs)
+
+
 class OrcamentoItem(models.Model):
     """
     Model de Item de Orçamento

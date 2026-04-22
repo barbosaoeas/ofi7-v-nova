@@ -13,9 +13,18 @@ urlpatterns = [
     path('<int:pk>/editar/', views_crud.orcamento_update, name='update'),
     path('<int:pk>/deletar/', views_crud.orcamento_delete, name='delete'),
 
+    # Revisões
+    path('<int:pk>/revisao/iniciar/', views_crud.orcamento_revisao_iniciar, name='revisao_iniciar'),
+    path('<int:pk>/revisao/<int:revisao_id>/confirmar/', views_crud.orcamento_revisao_confirmar, name='revisao_confirmar'),
+    path('<int:pk>/revisao/<int:revisao_id>/imprimir/', views_crud.orcamento_revisao_imprimir, name='revisao_imprimir'),
+
     # Ações de status e OS
     path('<int:pk>/status/', views_crud.orcamento_mudar_status, name='mudar_status'),
     path('<int:pk>/gerar-os/', views_crud.orcamento_gerar_os, name='gerar_os'),
+
+    # Aditivos
+    path('<int:pk>/aditivos/pecas/novo/', views_crud.orcamento_aditivo_pecas_create, name='aditivo_pecas_create'),
+    path('<int:pk>/aditivos/<int:aditivo_id>/imprimir/', views_crud.orcamento_aditivo_imprimir, name='aditivo_imprimir'),
 
     # HTMX
     path('veiculos-por-cliente/', views_crud.veiculos_por_cliente, name='veiculos_por_cliente'),

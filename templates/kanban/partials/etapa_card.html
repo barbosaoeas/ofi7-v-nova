@@ -136,7 +136,7 @@
     {% endif %}
 
     {% if etapa.mostrar_entrega or etapa.ordem.status == 'concluida' %}
-    {% if user.is_superuser or user.perfil == 'admin' or user.perfil == 'gerente' or user.perfil == 'supervisor' or user.perfil == 'financeiro' %}
+    {% if user.is_superuser or user.perfil == 'admin' or user.perfil == 'gerente' or user.perfil == 'supervisor' or user.perfil == 'financeiro' or user.perfil == 'orcamentista' %}
     <div class="mt-2">
       <button onclick="entregarOrdem({{ etapa.ordem.id }}, this)"
               class="w-full text-xs font-semibold py-1.5 px-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition active:scale-95">

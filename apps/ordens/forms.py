@@ -5,10 +5,11 @@ from .models import OrdemServico, OrdemEtapa
 class OrdemServicoForm(forms.ModelForm):
     class Meta:
         model = OrdemServico
-        fields = ['status', 'data_chegada_veiculo', 'observacoes']
+        fields = ['status', 'data_chegada_veiculo', 'data_previsao_entrega', 'observacoes']
         widgets = {
             'status': forms.Select(attrs={'class': 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 font-medium'}),
             'data_chegada_veiculo': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 font-medium'}),
+            'data_previsao_entrega': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 font-medium'}),
             'observacoes': forms.Textarea(attrs={'class': 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900', 'rows': 2}),
         }
 

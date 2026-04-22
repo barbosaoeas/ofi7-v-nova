@@ -27,12 +27,14 @@ class PecaService:
             Peca: Peça criada
         """
         peca = Peca.objects.create(
+            veiculo=etapa.ordem.veiculo,
+            orcamento=getattr(etapa.ordem, 'orcamento', None),
             ordem=etapa.ordem,
             etapa_bloqueada=etapa,
             descricao=observacao or f"Peça necessária para {etapa.nome}",
             fornecedor_tipo='escritorio',  # padrão
             solicitado_por=solicitado_por,
-            status='solicitada',
+            status='falta_comprar',
             observacao=observacao
         )
         
@@ -66,7 +68,7 @@ class PecaService:
         if peca.etapa_bloqueada:
             etapa = peca.etapa_bloqueada
             if etapa.status == 'aguardando_peca':
-                etapa.status = 'pendente'
+                etapa.status = 'programado' if etapa.funcionario_id else 'aguardando'
                 etapa.save()
                 etapa_liberada = etapa
                 
@@ -91,9 +93,9 @@ class PecaService:
         hoje = timezone.now().date()
         
         return Peca.objects.filter(
-            data_previsao__lt=hoje,
-            status__in=['solicitada', 'aprovada', 'pedida']
-        ).order_by('data_previsao')
+            prazo_chegada__isnull=False,
+            prazo_chegada__lt=hoje,
+        ).exclude(status__in=['recebida', 'cancelada']).order_by('prazo_chegada')
     
     @staticmethod
     def obter_alertas_pecas():
@@ -108,15 +110,13 @@ class PecaService:
         
         return {
             'atrasadas': Peca.objects.filter(
-                data_previsao__lt=hoje,
-                status__in=['solicitada', 'aprovada', 'pedida']
-            ).count(),
+                prazo_chegada__isnull=False,
+                prazo_chegada__lt=hoje,
+            ).exclude(status__in=['recebida', 'cancelada']).count(),
             'chegam_hoje': Peca.objects.filter(
-                data_previsao=hoje,
-                status__in=['aprovada', 'pedida']
-            ).count(),
-            'aguardando_aprovacao': Peca.objects.filter(
-                status='solicitada'
+                prazo_chegada=hoje,
+            ).exclude(status__in=['recebida', 'cancelada']).count(),
+            'falta_comprar': Peca.objects.filter(
+                status='falta_comprar'
             ).count(),
         }
-

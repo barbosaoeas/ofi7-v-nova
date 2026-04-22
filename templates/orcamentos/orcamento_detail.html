@@ -58,6 +58,32 @@
       </a>
       {% endif %}
 
+      {% if revisao_aberta %}
+      <a href="{% url 'orcamentos:update' orcamento.pk %}?revisao={{ revisao_aberta.pk }}"
+         class="action-btn text-orange-700 bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20">
+        <i class="fas fa-rotate-left text-xs"></i> Continuar Revisão
+      </a>
+      <form method="post" action="{% url 'orcamentos:revisao_confirmar' orcamento.pk revisao_aberta.pk %}" class="inline">
+        {% csrf_token %}
+        <button type="submit"
+                class="action-btn text-white bg-orange-600 border-orange-500 hover:bg-orange-500">
+          <i class="fas fa-file-signature text-xs"></i> Confirmar e Imprimir Revisão
+        </button>
+      </form>
+      {% else %}
+        {% if orcamento.status in 'aprovado,retrabalho' and user.is_authenticated %}
+          {% if user.is_superuser or user.perfil == 'admin' or user.perfil == 'gerente' or user.perfil == 'supervisor' or user.perfil == 'orcamentista' %}
+          <form method="post" action="{% url 'orcamentos:revisao_iniciar' orcamento.pk %}" class="inline">
+            {% csrf_token %}
+            <button type="submit"
+                    class="action-btn text-orange-700 bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20">
+              <i class="fas fa-rotate-left text-xs"></i> Reabrir p/ Revisão
+            </button>
+          </form>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+
       <!-- Imprimir -->
       <button onclick="window.print()"
               class="action-btn text-gray-700 bg-white shadow-sm border-gray-300 hover:bg-gray-50">
@@ -119,6 +145,10 @@
       <a href="{% url 'ordens:update' orcamento.ordem_servico.pk %}"
          class="action-btn text-white bg-indigo-600 border-indigo-500 hover:bg-indigo-500">
         <i class="fas fa-tasks text-xs"></i> Programar OS
+      </a>
+      <a href="{% url 'orcamentos:aditivo_pecas_create' orcamento.pk %}"
+         class="action-btn text-purple-600 bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20">
+        <i class="fas fa-plus text-xs"></i> Aditivo (Peças)
       </a>
       {% endif %}
       <!-- Aprovado sem OS → Alerta e botão para editar -->
@@ -243,6 +273,43 @@
       </div>
     </div>
 
+    {% if orcamento.aditivos.all %}
+    <div class="p-5 border-b border-gray-200">
+      <div class="text-xs text-gray-600 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+        <i class="fas fa-file-signature text-purple-500"></i> Aditivos
+      </div>
+      <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b border-gray-200">
+            <tr class="text-left">
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Número</th>
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Status</th>
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Criado em</th>
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold text-right">Peças</th>
+              <th class="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            {% for ad in orcamento.aditivos.all %}
+            <tr>
+              <td class="px-4 py-3 font-mono font-bold text-gray-800">{{ ad.numero }}</td>
+              <td class="px-4 py-3 text-gray-700">{{ ad.get_status_display }}</td>
+              <td class="px-4 py-3 text-gray-700">{{ ad.criado_em|date:"d/m/Y H:i" }}</td>
+              <td class="px-4 py-3 text-right font-semibold text-gray-900">{{ ad.pecas.count }}</td>
+              <td class="px-4 py-3 text-right">
+                <a href="{% url 'orcamentos:aditivo_imprimir' orcamento.pk ad.pk %}"
+                   class="text-indigo-600 hover:text-indigo-800 font-semibold">
+                  Ver / Imprimir
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
     <!-- ── Tabela de serviços ── -->
     <div class="p-5">
       <div class="text-xs text-gray-600 uppercase tracking-wider mb-4 flex items-center gap-1.5">
@@ -286,6 +353,108 @@
       {% endif %}
     </div>
 
+    <!-- ── Peças ── -->
+    <div class="p-5 border-t border-gray-200">
+      <div class="text-xs text-gray-600 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+        <i class="fas fa-boxes text-purple-500"></i> Peças
+      </div>
+
+      {% if orcamento.pecas.all %}
+      <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b border-gray-200">
+            <tr class="text-left">
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">#</th>
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Descrição</th>
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Origem</th>
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Fornecedor</th>
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Status</th>
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Prev. Chegada</th>
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Recebida em</th>
+              <th class="px-4 py-3 text-xs text-gray-600 uppercase tracking-wider font-semibold">Etapa</th>
+              <th class="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {% for p in orcamento.pecas.all %}
+            <tr class="hover:bg-gray-50 transition">
+              <td class="px-4 py-3.5 text-gray-500 font-mono text-xs">{{ forloop.counter }}</td>
+              <td class="px-4 py-3.5 text-gray-900 font-semibold">{{ p.descricao }}</td>
+              <td class="px-4 py-3.5">
+                {% if p.aditivo %}
+                  <span class="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700 border border-purple-200">
+                    {{ p.aditivo.numero }}
+                  </span>
+                {% else %}
+                  <span class="text-xs text-gray-500 font-semibold">Orçamento</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3.5 text-gray-700 font-medium">{{ p.get_fornecedor_tipo_display }}</td>
+              <td class="px-4 py-3.5">
+                <span class="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full border
+                  {% if p.status == 'recebida' %}bg-green-50 text-green-700 border-green-200
+                  {% elif p.status == 'atrasada' %}bg-red-50 text-red-700 border-red-200
+                  {% elif p.status == 'comprada' %}bg-blue-50 text-blue-700 border-blue-200
+                  {% elif p.status == 'falta_comprar' or p.status == 'solicitada' %}bg-yellow-50 text-yellow-700 border-yellow-200
+                  {% else %}bg-gray-50 text-gray-700 border-gray-200{% endif %}">
+                  {{ p.get_status_display }}
+                </span>
+              </td>
+              <td class="px-4 py-3.5 text-gray-700 font-medium">
+                {% if p.prazo_chegada %}
+                  <span class="{% if p.esta_atrasada %}text-red-700 font-bold{% else %}text-gray-700{% endif %}">
+                    {{ p.prazo_chegada|date:"d/m/Y" }}
+                  </span>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td class="px-4 py-3.5 text-gray-700 font-medium">
+                {% if p.data_recebimento %}
+                  {{ p.data_recebimento|date:"d/m/Y H:i" }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td class="px-4 py-3.5 text-gray-700">
+                {% if p.etapa_bloqueada %}
+                  <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
+                    {{ p.etapa_bloqueada.nome }}
+                  </span>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td class="px-4 py-3.5 text-right">
+                {% if p.status != 'recebida' and user.is_authenticated %}
+                  {% if user.is_superuser or user.perfil == 'admin' or user.perfil == 'gerente' or user.perfil == 'supervisor' or user.perfil == 'financeiro' %}
+                    <form method="post" action="{% url 'pecas:marcar_recebida' p.pk %}" class="inline">
+                      {% csrf_token %}
+                      <button type="submit"
+                              class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
+                        <i class="fas fa-check mr-1"></i> Confirmar chegada
+                      </button>
+                    </form>
+                  {% else %}
+                    —
+                  {% endif %}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-8 text-gray-600 text-sm">
+        <i class="fas fa-box-open text-2xl mb-2 block"></i>
+        Nenhuma peça registrada neste orçamento.
+      </div>
+      {% endif %}
+    </div>
+
     <!-- ── Totais ── -->
     <div class="border-t border-gray-200">
       <div class="flex justify-end p-5 bg-gray-50 rounded-b-2xl">
@@ -295,6 +464,12 @@
               <span>Subtotal dos serviços</span>
               <span class="text-gray-800 font-semibold">R$ {{ orcamento.valor_total_servicos|floatformat:2 }}</span>
             </div>
+            {% if orcamento.valor_total_pecas %}
+            <div class="flex justify-between text-gray-600">
+              <span>Subtotal de peças (oficina)</span>
+              <span class="text-gray-800 font-semibold">R$ {{ orcamento.valor_total_pecas|floatformat:2 }}</span>
+            </div>
+            {% endif %}
             {% if orcamento.desconto %}
             <div class="flex justify-between text-green-600 font-semibold">
               <span>Desconto</span>

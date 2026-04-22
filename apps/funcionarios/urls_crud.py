@@ -8,6 +8,7 @@ urlpatterns = [
     path('login/', views_login.login_view, name='login'),
     path('login/autenticar/', views_login.autenticar_view, name='autenticar'),
     path('logout/', views_login.logout_view, name='logout'),
+    path('mudar-senha/', views_login.mudar_senha_view, name='mudar_senha'),
 
     # CRUD de funcionários
     path('', views_crud.funcionario_list, name='list'),

@@ -93,7 +93,7 @@ class OrdemServico(models.Model):
     @property
     def valor_pecas(self):
         """Calcula o valor total das peças fornecidas pela oficina"""
-        return sum(peca.valor_venda for peca in self.pecas.filter(fornecedor_tipo='oficina'))
+        return sum(peca.valor_venda for peca in self.pecas.filter(fornecedor_tipo='escritorio'))
 
     @property
     def valor_total(self):

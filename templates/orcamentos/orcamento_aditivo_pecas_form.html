@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+
+{% block title %}Aditivo — {{ orcamento.numero }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto bg-gray-900 p-8 rounded-[2rem] shadow-2xl my-4 text-gray-200"
+     x-data="aditivoPecasForm()"
+     x-init="init()">
+
+  <div class="flex items-center justify-between gap-3 mb-6">
+    <a href="{% url 'orcamentos:detail' orcamento.pk %}"
+       class="p-2 text-gray-400 hover:text-gray-200 bg-white/5 hover:bg-white/10 rounded-xl transition">
+      <i class="fas fa-arrow-left"></i>
+    </a>
+    <div class="flex-1">
+      <h1 class="text-2xl font-black tracking-tight">Aditivo de Peças</h1>
+      <p class="text-sm text-gray-500">Orçamento {{ orcamento.numero }} · {{ orcamento.cliente.nome }} · {{ orcamento.veiculo.placa }}</p>
+    </div>
+  </div>
+
+  <form method="post" class="space-y-6">
+    {% csrf_token %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-1 space-y-5">
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <i class="fas fa-file-signature text-yellow-400"></i> Dados do Aditivo
+          </h2>
+          <div class="space-y-4">
+            <div>
+              <label class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Status</label>
+              <div class="mt-1">{{ form.status }}</div>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Observações</label>
+              <div class="mt-1">{{ form.observacoes }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <i class="fas fa-calculator text-yellow-400"></i> Resumo
+          </h2>
+          <div class="space-y-1 text-sm">
+            <div class="flex justify-between py-1 text-gray-400">
+              <span>Total (peças)</span>
+              <span x-text="'R$ ' + total.toFixed(2).replace('.', ',')">R$ 0,00</span>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-3 rounded-xl transition shadow-lg">
+          <i class="fas fa-save mr-2"></i> Salvar Aditivo
+        </button>
+      </div>
+
+      <div class="lg:col-span-2">
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <i class="fas fa-boxes text-purple-400"></i> Peças do Aditivo
+            </h2>
+            <button type="button"
+                    @click="adicionarPeca()"
+                    class="inline-flex items-center gap-1.5 text-sm bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 px-3 py-1.5 rounded-lg transition">
+              <i class="fas fa-plus text-xs"></i> Adicionar Peça
+            </button>
+          </div>
+
+          {{ formset.management_form }}
+
+          <div class="grid grid-cols-12 gap-2 px-1 mb-2 text-xs text-gray-500 uppercase tracking-wider font-semibold">
+            <div class="col-span-4">Peça</div>
+            <div class="col-span-2">Fornecedor</div>
+            <div class="col-span-1 text-center">Qtd</div>
+            <div class="col-span-2 text-right">Custo</div>
+            <div class="col-span-2 text-right">Venda</div>
+            <div class="col-span-1">Prazo</div>
+          </div>
+
+          <div id="pecas-container">
+            {% for peca_form in formset %}
+            <div class="peca-form-row grid grid-cols-12 gap-2 mb-2 items-start {% if peca_form.instance.pk %}has-instance{% endif %}">
+              {% for hidden in peca_form.hidden_fields %}{{ hidden }}{% endfor %}
+              <div class="col-span-4">
+                {{ peca_form.catalogo }}
+                {% if peca_form.catalogo.errors %}
+                  <p class="text-red-400 text-[10px] mt-1">{{ peca_form.catalogo.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div class="col-span-2">
+                {{ peca_form.fornecedor_tipo }}
+              </div>
+              <div class="col-span-1">
+                {{ peca_form.quantidade }}
+              </div>
+              <div class="col-span-2">
+                {{ peca_form.valor_custo }}
+              </div>
+              <div class="col-span-2">
+                {{ peca_form.valor_venda }}
+              </div>
+              <div class="col-span-1">
+                {{ peca_form.prazo_chegada }}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <template x-for="(peca, idx) in novasPecas" :key="idx">
+            <div class="grid grid-cols-12 gap-2 mb-2 items-start novo-peca">
+              <div class="col-span-4">
+                <select :name="'pecas-' + ({{ formset.total_form_count }} + idx) + '-catalogo'"
+                        x-model="peca.catalogo"
+                        @change="preencherDaLista(idx)"
+                        class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm focus:outline-none focus:border-yellow-400/60 transition item-peca-catalogo">
+                  <option value="" class="text-gray-400">Selecione a peça...</option>
+                  {% for item in catalogo_pecas %}
+                    <option value="{{ item.id }}">{{ item.descricao }}</option>
+                  {% endfor %}
+                </select>
+                <input type="hidden"
+                       :name="'pecas-' + ({{ formset.total_form_count }} + idx) + '-descricao'"
+                       x-model="peca.descricao">
+                <input type="hidden"
+                       :name="'pecas-' + ({{ formset.total_form_count }} + idx) + '-percentual_lucro'"
+                       x-model="peca.percentual_lucro">
+              </div>
+              <div class="col-span-2">
+                <select :name="'pecas-' + ({{ formset.total_form_count }} + idx) + '-fornecedor_tipo'"
+                        x-model="peca.fornecedor_tipo"
+                        @change="recalcular()"
+                        class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm focus:outline-none focus:border-yellow-400/60 transition item-peca-tipo">
+                  <option value="cliente">Cliente</option>
+                  <option value="seguradora">Seguradora</option>
+                  <option value="escritorio">Oficina</option>
+                </select>
+              </div>
+              <div class="col-span-1">
+                <input type="number"
+                       :name="'pecas-' + ({{ formset.total_form_count }} + idx) + '-quantidade'"
+                       x-model="peca.quantidade"
+                       @input="recalcular()"
+                       step="1" min="1"
+                       class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm text-center focus:outline-none focus:border-yellow-400/60 transition item-peca-qtd">
+              </div>
+              <div class="col-span-2">
+                <input type="number"
+                       :name="'pecas-' + ({{ formset.total_form_count }} + idx) + '-valor_custo'"
+                       x-model="peca.valor_custo"
+                       @input="recalcular()"
+                       placeholder="0.00" step="0.01" min="0"
+                       class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm text-right focus:outline-none focus:border-yellow-400/60 transition item-peca-custo">
+              </div>
+              <div class="col-span-2">
+                <input type="number"
+                       :name="'pecas-' + ({{ formset.total_form_count }} + idx) + '-valor_venda'"
+                       :value="peca.valor_venda"
+                       readonly
+                       class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm text-right focus:outline-none focus:border-yellow-400/60 transition item-peca-venda">
+              </div>
+              <div class="col-span-1">
+                <input type="date"
+                       :name="'pecas-' + ({{ formset.total_form_count }} + idx) + '-prazo_chegada'"
+                       x-model="peca.prazo_chegada"
+                       class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm focus:outline-none focus:border-yellow-400/60 transition">
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+function aditivoPecasForm() {
+  return {
+    catalogoPecas: {{ catalogo_pecas_json|safe|default:"[]" }},
+    catalogoPecasMap: {},
+    novasPecas: [],
+    total: 0,
+
+    init() {
+      try { (this.catalogoPecas || []).forEach(p => { this.catalogoPecasMap[String(p.id)] = p; }); } catch (e) {}
+      this.$nextTick(() => this.recalcular());
+    },
+
+    adicionarPeca() {
+      this.novasPecas.push({ catalogo: '', descricao: '', fornecedor_tipo: 'escritorio', quantidade: 1, valor_custo: '', percentual_lucro: 30, valor_venda: 0, prazo_chegada: '' });
+      this.$nextTick(() => this.recalcular());
+    },
+
+    preencherDaLista(idx) {
+      const selects = Array.from(document.querySelectorAll('.novo-peca .item-peca-catalogo'));
+      const el = selects[idx];
+      if (!el) return;
+      const opt = el.options[el.selectedIndex];
+      if (opt && opt.value) {
+        this.novasPecas[idx].descricao = opt.text;
+      }
+      const info = this.catalogoPecasMap[String(el.value)];
+      if (info) {
+        this.novasPecas[idx].fornecedor_tipo = info.fornecedor_tipo || 'escritorio';
+        this.novasPecas[idx].quantidade = info.quantidade || 1;
+        this.novasPecas[idx].valor_custo = info.valor_custo || '';
+        this.novasPecas[idx].percentual_lucro = info.percentual_lucro || 30;
+      }
+      this.recalcular();
+    },
+
+    recalcular() {
+      let total = 0;
+      this.novasPecas.forEach(p => {
+        const tipo = p.fornecedor_tipo || '';
+        const custo = parseFloat(p.valor_custo) || 0;
+        const lucro = parseFloat(p.percentual_lucro) || 0;
+        const qtd = parseFloat(p.quantidade) || 1;
+        const venda = tipo === 'escritorio' ? (custo + (custo * (lucro / 100))) : 0;
+        p.valor_venda = parseFloat((venda).toFixed(2));
+        total += (venda * qtd);
+      });
+      this.total = total;
+    }
+  };
+}
+</script>
+{% endblock %}
+

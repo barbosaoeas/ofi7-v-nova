@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Orcamento, OrcamentoItem
+from .models import Orcamento, OrcamentoItem, OrcamentoAditivo
 
 
 class OrcamentoItemInline(admin.TabularInline):
@@ -20,3 +20,9 @@ class OrcamentoAdmin(admin.ModelAdmin):
         return f"R$ {obj.valor_total_servicos:,.2f}"
     valor_total_servicos.short_description = 'Valor Total'
 
+
+@admin.register(OrcamentoAditivo)
+class OrcamentoAditivoAdmin(admin.ModelAdmin):
+    list_display = ['numero', 'orcamento', 'status', 'criado_por', 'criado_em']
+    list_filter = ['status']
+    search_fields = ['numero', 'orcamento__numero', 'orcamento__cliente__nome']

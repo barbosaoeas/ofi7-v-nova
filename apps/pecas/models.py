@@ -19,6 +19,7 @@ class Peca(models.Model):
     ]
     
     STATUS_CHOICES = [
+        ('solicitada', 'Solicitada'),
         ('falta_comprar', 'Falta Comprar'),
         ('comprada', 'Peça Comprada'),
         ('atrasada', 'Peça Atrasada'),
@@ -50,6 +51,14 @@ class Peca(models.Model):
         on_delete=models.SET_NULL,
         related_name='pecas',
         verbose_name='Orçamento',
+        null=True,
+        blank=True
+    )
+    aditivo = models.ForeignKey(
+        'orcamentos.OrcamentoAditivo',
+        on_delete=models.SET_NULL,
+        related_name='pecas',
+        verbose_name='Aditivo',
         null=True,
         blank=True
     )
@@ -118,7 +127,7 @@ class Peca(models.Model):
         'Status',
         max_length=15,
         choices=STATUS_CHOICES,
-        default='solicitada'
+        default='falta_comprar'
     )
     data_solicitacao = models.DateTimeField('Data da Solicitação', auto_now_add=True)
     data_aprovacao = models.DateTimeField('Data da Aprovação', null=True, blank=True)

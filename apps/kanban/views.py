@@ -289,7 +289,7 @@ def entregar_ordem(request, ordem_id):
 
     ordem = get_object_or_404(OrdemServico, id=ordem_id)
     perfil = getattr(request.user, 'perfil', '')
-    if not (request.user.is_superuser or perfil in ['admin', 'gerente', 'supervisor', 'financeiro']):
+    if not (request.user.is_superuser or perfil in ['admin', 'gerente', 'supervisor', 'financeiro', 'orcamentista']):
         return JsonResponse({'ok': False, 'erro': 'Acesso restrito.'}, status=403)
 
     if ordem.status != 'concluida':
