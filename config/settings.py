@@ -11,7 +11,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
 DEBUG = config('DEBUG', default=True, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "ofi7ipojuca.pythonanywhere.com",
+]
+
+
 
 # APPS
 INSTALLED_APPS = [
@@ -21,10 +27,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
-    # Third party
-    'django_htmx',
-    'widget_tweaks',
+
+     # bibliotecas externas
+    'rest_framework',
+    'drf_spectacular',
     
     # Local apps
     'apps.clientes',
@@ -105,10 +111,19 @@ LOGOUT_REDIRECT_URL = 'funcionarios:login'
 
 AUTH_PASSWORD_VALIDATORS = [
     {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
         'OPTIONS': {
-            'min_length': 4,
+            'min_length': 8,
         }
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
 

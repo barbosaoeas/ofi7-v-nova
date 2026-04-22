@@ -4,9 +4,11 @@ Login estilo: selecionar usuário → digitar apenas a senha
 """
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.password_validation import validate_password
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
+from django.core.exceptions import ValidationError
 import json
 
 from .models import Funcionario
@@ -115,6 +117,12 @@ def mudar_senha_view(request):
             messages.error(request, 'As senhas não coincidem.')
         else:
             user = request.user
+            try:
+                validate_password(nova_senha, user=user)
+            except ValidationError as e:
+                for msg in e.messages:
+                    messages.error(request, msg)
+                return render(request, 'funcionarios/mudar_senha.html')
             user.set_password(nova_senha)
             if hasattr(user, 'deve_mudar_senha'):
                 user.deve_mudar_senha = False
