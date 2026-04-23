@@ -114,9 +114,10 @@
 
         <div class="flex-shrink-0 flex flex-col items-end gap-2">
           {% if bloqueada %}
-          <span class="text-xs bg-gray-100 text-gray-500 rounded-full px-3 py-1 font-semibold">
-            <i class="fas fa-lock mr-1"></i>Aguardando anterior
-          </span>
+          <button type="button" disabled
+                  class="text-xs bg-gray-200 text-gray-500 font-bold px-4 py-2 rounded-xl transition cursor-not-allowed opacity-80">
+            <i class="fas fa-lock mr-1"></i>Iniciar
+          </button>
           {% elif not em_andamento %}
           <button onclick="acaoSessao('iniciar', {{ etapa.id }}, this)"
                   class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl transition active:scale-95">
