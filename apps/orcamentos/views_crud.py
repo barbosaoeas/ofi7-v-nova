@@ -344,6 +344,62 @@ def orcamento_update(request, pk):
                             update_fields.append('data_previsao_entrega')
                         if update_fields:
                             os_obj.save(update_fields=update_fields)
+
+                        from apps.ordens.models import OrdemEtapa
+                        from apps.ordens.services import OrdemEtapaService, OrdemServicoService
+
+                        existentes_por_sequencia = {
+                            e.sequencia: e
+                            for e in os_obj.etapas.all()
+                        }
+                        sequencias_usadas = set(existentes_por_sequencia.keys())
+                        max_sequencia = max(sequencias_usadas) if sequencias_usadas else 0
+
+                        itens = list(orcamento_salvo.itens.all().select_related('etapa'))
+                        for item in itens:
+                            nome_etapa = item.etapa.nome if item.etapa else 'Serviço Adicional'
+                            descricao = (item.descricao or '').strip()
+
+                            sequencia_desejada = OrdemEtapaService.obter_sequencia_por_nome(nome_etapa)
+                            if sequencia_desejada in sequencias_usadas:
+                                etapa_existente = existentes_por_sequencia.get(sequencia_desejada)
+                                if (
+                                    etapa_existente
+                                    and etapa_existente.status in ['aguardando', 'programado']
+                                    and etapa_existente.nome == nome_etapa
+                                ):
+                                    update_fields_etapa = []
+                                    if descricao and etapa_existente.descricao != descricao:
+                                        etapa_existente.descricao = descricao
+                                        update_fields_etapa.append('descricao')
+                                    valor_servico = (item.valor or 0) if not getattr(item, 'retrabalho', False) else 0
+                                    if etapa_existente.valor_servico != valor_servico:
+                                        etapa_existente.valor_servico = valor_servico
+                                        update_fields_etapa.append('valor_servico')
+                                    if etapa_existente.horas_orcadas != item.horas_previstas:
+                                        etapa_existente.horas_orcadas = item.horas_previstas
+                                        update_fields_etapa.append('horas_orcadas')
+                                    if update_fields_etapa:
+                                        etapa_existente.save(update_fields=update_fields_etapa)
+                                continue
+
+                            if sequencia_desejada in sequencias_usadas:
+                                max_sequencia += 1
+                                sequencia_desejada = max_sequencia
+
+                            etapa_nova = OrdemEtapa.objects.create(
+                                ordem=os_obj,
+                                nome=nome_etapa,
+                                descricao=descricao,
+                                sequencia=sequencia_desejada,
+                                valor_servico=(item.valor or 0) if not getattr(item, 'retrabalho', False) else 0,
+                                horas_orcadas=item.horas_previstas,
+                                status='aguardando',
+                            )
+                            existentes_por_sequencia[etapa_nova.sequencia] = etapa_nova
+                            sequencias_usadas.add(etapa_nova.sequencia)
+
+                        OrdemServicoService.atualizar_status_ordem(os_obj)
                     except Exception:
                         pass
 
