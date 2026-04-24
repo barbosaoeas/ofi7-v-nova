@@ -29,7 +29,7 @@ class OrcamentoForm(forms.ModelForm):
 
     class Meta:
         model = Orcamento
-        fields = ['cliente', 'veiculo', 'status', 'perda_total', 'data_agendada', 'data_prevista_entrega', 'validade', 'desconto', 'observacoes']
+        fields = ['cliente', 'veiculo', 'status', 'perda_total', 'data_agendada', 'data_prevista_entrega', 'validade', 'inativo', 'desconto', 'observacoes']
         widgets = {
             'cliente': forms.Select(attrs={
                 'class': (
@@ -78,6 +78,9 @@ class OrcamentoForm(forms.ModelForm):
                 ),
                 'type': 'date',
             }),
+            'inativo': forms.CheckboxInput(attrs={
+                'class': 'w-5 h-5 text-yellow-400 bg-white/5 border-white/30 rounded focus:ring-yellow-400/30',
+            }),
             'desconto': forms.NumberInput(attrs={
                 'class': (
                     'w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 '
@@ -111,8 +114,12 @@ class OrcamentoForm(forms.ModelForm):
         self.fields['data_agendada'].label = 'Agendar entrada'
         self.fields['data_prevista_entrega'].label = 'Previsão de entrega'
         self.fields['validade'].label = 'Válido até'
+        self.fields['inativo'].label = 'Inativo'
         self.fields['desconto'].label = 'Desconto (R$)'
         self.fields['observacoes'].label = 'Observações'
+
+        if self.instance and getattr(self.instance, 'status', None) == 'entregue':
+            self.fields['inativo'].disabled = True
 
         veiculo_atual_id = None
         if self.instance.pk and self.instance.veiculo_id:

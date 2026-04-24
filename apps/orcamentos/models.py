@@ -3,6 +3,8 @@ Models para Orçamentos
 """
 from django.db import models
 from decimal import Decimal
+from django.utils import timezone
+from datetime import timedelta
 
 
 class EtapaPadrao(models.Model):
@@ -66,6 +68,7 @@ class Orcamento(models.Model):
     numero = models.CharField('Número', max_length=20, unique=True, editable=False)
     data_orcamento = models.DateField('Data do Orçamento', auto_now_add=True)
     validade = models.DateField('Validade', null=True, blank=True)
+    inativo = models.BooleanField('Inativo', default=False)
     data_agendada = models.DateField('Agenda (Entrada na Oficina)', null=True, blank=True)
     data_prevista_entrega = models.DateField('Previsão de Entrega', null=True, blank=True)
     
@@ -101,6 +104,19 @@ class Orcamento(models.Model):
         return f"Orçamento {self.numero} - {self.cliente.nome}"
     
     def save(self, *args, **kwargs):
+        hoje = timezone.now().date()
+        if not self.validade:
+            self.validade = hoje + timedelta(days=30)
+        if self.status == 'entregue':
+            self.inativo = True
+        elif self.status in ['aprovado', 'retrabalho']:
+            if self.inativo:
+                self.inativo = False
+        else:
+            if self.status in ['rejeitado', 'cancelado']:
+                self.inativo = True
+            elif self.validade and self.validade < hoje and not self.inativo:
+                self.inativo = True
         if not self.numero:
             # Gera número automático
             ultimo = Orcamento.objects.order_by('-id').first()

@@ -6,13 +6,54 @@ from .models import Peca
 from apps.clientes.models import Cliente
 from apps.orcamentos.models import Orcamento
 from apps.ordens.models import OrdemServico
+from apps.veiculos.models import Veiculo
 
 
 class PecaForm(forms.ModelForm):
     """Formulário para Cadastro de Peça"""
 
     def __init__(self, *args, **kwargs):
+        cliente_id = kwargs.pop('cliente_id', None)
         super().__init__(*args, **kwargs)
+        veiculos = Veiculo.objects.all()
+
+        orcamento_id = None
+        ordem_id = None
+        try:
+            orcamento_id = self.initial.get('orcamento') or getattr(self.instance, 'orcamento_id', None)
+        except Exception:
+            orcamento_id = getattr(self.instance, 'orcamento_id', None)
+        try:
+            ordem_id = self.initial.get('ordem') or getattr(self.instance, 'ordem_id', None)
+        except Exception:
+            ordem_id = getattr(self.instance, 'ordem_id', None)
+
+        if not cliente_id and orcamento_id:
+            try:
+                cliente_id = Orcamento.objects.filter(id=orcamento_id).values_list('cliente_id', flat=True).first()
+            except Exception:
+                cliente_id = None
+        if not cliente_id and ordem_id:
+            try:
+                cliente_id = (
+                    OrdemServico.objects.filter(id=ordem_id)
+                    .values_list('veiculo__cliente_id', flat=True)
+                    .first()
+                )
+            except Exception:
+                cliente_id = None
+        if not cliente_id and getattr(self.instance, 'veiculo_id', None):
+            try:
+                cliente_id = Veiculo.objects.filter(id=self.instance.veiculo_id).values_list('cliente_id', flat=True).first()
+            except Exception:
+                cliente_id = None
+
+        if cliente_id:
+            veiculos = veiculos.filter(cliente_id=cliente_id)
+        if self.instance and getattr(self.instance, 'veiculo_id', None):
+            veiculos = veiculos | Veiculo.objects.filter(id=self.instance.veiculo_id)
+        self.fields['veiculo'].queryset = veiculos.distinct().order_by('placa')
+
         fornecedores = Cliente.objects.filter(ativo=True)
         if self.instance and getattr(self.instance, 'fornecedor_id', None):
             fornecedores = fornecedores | Cliente.objects.filter(id=self.instance.fornecedor_id)
@@ -27,6 +68,21 @@ class PecaForm(forms.ModelForm):
 
         self.fields['orcamento'].queryset = orcamentos_ativos.distinct().order_by('-id')
         self.fields['ordem'].queryset = ordens_ativas.distinct().order_by('-id')
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if not getattr(instance, 'veiculo_id', None):
+            ordem = getattr(instance, 'ordem', None)
+            if ordem and getattr(ordem, 'veiculo_id', None):
+                instance.veiculo_id = ordem.veiculo_id
+            else:
+                orcamento = getattr(instance, 'orcamento', None)
+                if orcamento and getattr(orcamento, 'veiculo_id', None):
+                    instance.veiculo_id = orcamento.veiculo_id
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
 
     def clean_orcamento(self):
         orcamento = self.cleaned_data.get('orcamento')

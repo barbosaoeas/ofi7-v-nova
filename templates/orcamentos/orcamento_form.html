@@ -169,6 +169,16 @@
             {% endif %}
           </div>
 
+          <div class="mb-4 flex items-center gap-3">
+            {{ form.inativo }}
+            <label for="{{ form.inativo.id_for_label }}" class="text-sm font-semibold text-gray-200 select-none">
+              Inativo
+            </label>
+            {% if form.inativo.errors %}
+              <p class="text-red-400 text-xs">{{ form.inativo.errors.0 }}</p>
+            {% endif %}
+          </div>
+
           <div>
             <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
               Desconto (R$)
@@ -392,12 +402,18 @@
               {% if not is_create and orcamento %}
               <a href="{% url 'pecas:create' %}?orcamento={{ orcamento.id }}&veiculo={{ orcamento.veiculo_id }}"
                  target="_blank"
+                 data-base-href="{% url 'pecas:create' %}"
+                 data-orcamento-id="{{ orcamento.id }}"
+                 @click="prepararLinkCadastroPecas($event)"
                  class="inline-flex items-center gap-1.5 text-sm bg-white/5 hover:bg-white/10 text-gray-200 border border-white/15 px-3 py-1.5 rounded-lg transition">
                 <i class="fas fa-external-link-alt text-xs"></i> Cadastro de Peças
               </a>
               {% else %}
               <a href="{% url 'pecas:create' %}"
                  target="_blank"
+                 data-base-href="{% url 'pecas:create' %}"
+                 data-orcamento-id=""
+                 @click="prepararLinkCadastroPecas($event)"
                  class="inline-flex items-center gap-1.5 text-sm bg-white/5 hover:bg-white/10 text-gray-200 border border-white/15 px-3 py-1.5 rounded-lg transition">
                 <i class="fas fa-external-link-alt text-xs"></i> Cadastro de Peças
               </a>
@@ -997,6 +1013,20 @@ function orcamentoForm() {
     adicionarPeca() {
       this.novosPecas.push({ catalogo: '', descricao: '', fornecedor_tipo: 'escritorio', quantidade: 1, valor_custo: '', percentual_lucro: 30, valor_venda: 0 });
       this.$nextTick(() => { this.recalcular(); });
+    },
+
+    prepararLinkCadastroPecas(event) {
+      const a = event.currentTarget;
+      const base = a.dataset.baseHref || a.getAttribute('href') || '';
+      const orcamentoId = (a.dataset.orcamentoId || '').trim();
+      const clienteId = document.getElementById('id_cliente')?.value || '';
+      const veiculoId = document.getElementById('id_veiculo')?.value || '';
+
+      const params = new URLSearchParams();
+      if (orcamentoId) params.set('orcamento', orcamentoId);
+      if (clienteId) params.set('cliente', clienteId);
+      if (veiculoId) params.set('veiculo', veiculoId);
+      a.href = params.toString() ? `${base}?${params.toString()}` : base;
     },
 
     removerNovoPeca(idx) {

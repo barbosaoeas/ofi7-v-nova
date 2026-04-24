@@ -45,8 +45,9 @@ def peca_list(request):
 @login_required
 def peca_create(request):
     """Criar nova peça"""
+    cliente_id = request.GET.get('cliente')
     if request.method == 'POST':
-        form = PecaForm(request.POST)
+        form = PecaForm(request.POST, cliente_id=cliente_id)
         if form.is_valid():
             peca = form.save(commit=False)
             peca.solicitado_por = request.user
@@ -64,7 +65,7 @@ def peca_create(request):
             initial['veiculo'] = veiculo_id
         if ordem_id:
             initial['ordem'] = ordem_id
-        form = PecaForm(initial=initial)
+        form = PecaForm(initial=initial, cliente_id=cliente_id)
     
     context = {'form': form, 'title': 'Nova Peça'}
     return render(request, 'pecas/peca_form.html', context)

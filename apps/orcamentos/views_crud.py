@@ -117,6 +117,20 @@ def _snapshot_orcamento_para_revisao(orcamento):
 @login_required
 def orcamento_list(request):
     """Lista todos os orçamentos com filtros de status e busca"""
+    try:
+        from django.utils import timezone
+        from django.db.utils import OperationalError, ProgrammingError
+        try:
+            hoje = timezone.now().date()
+            Orcamento.objects.filter(status='entregue', inativo=False).update(inativo=True)
+            Orcamento.objects.filter(status__in=['rejeitado', 'cancelado'], inativo=False).update(inativo=True)
+            Orcamento.objects.filter(status__in=['rascunho', 'enviado'], inativo=False, validade__lt=hoje).update(inativo=True)
+            Orcamento.objects.filter(status__in=['aprovado', 'retrabalho'], inativo=True).update(inativo=False)
+        except (OperationalError, ProgrammingError):
+            pass
+    except Exception:
+        pass
+
     qs = Orcamento.objects.select_related(
         'cliente', 'veiculo', 'criado_por'
     ).prefetch_related('itens').order_by('-criado_em')
