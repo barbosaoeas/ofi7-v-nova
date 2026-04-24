@@ -874,3 +874,141 @@ def verificar_capacidade_data(request):
             return HttpResponse(html)
 
     return HttpResponse("")
+
+
+@login_required
+def relatorio_orcamentos_entregas(request):
+    from datetime import date, datetime
+    import calendar
+    from django.db.models import (
+        Q,
+        Sum,
+        Count,
+        F,
+        Value,
+        DecimalField,
+        ExpressionWrapper,
+    )
+    from django.db.models.functions import Coalesce
+
+    perfil = getattr(request.user, 'perfil', '')
+    pode_ver = request.user.is_superuser or perfil in ['admin', 'gerente', 'supervisor', 'financeiro', 'orcamentista']
+    if not pode_ver:
+        messages.error(request, 'Você não tem permissão para acessar este relatório.')
+        return redirect('dashboard:index')
+
+    hoje = date.today()
+    ini_padrao = hoje.replace(day=1)
+    fim_padrao = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+
+    data_inicio_str = request.GET.get('de') or ini_padrao.isoformat()
+    data_fim_str = request.GET.get('ate') or fim_padrao.isoformat()
+    status_filtro = request.GET.get('status') or 'aprovado'
+    incluir_perda_total = (request.GET.get('perda_total') or '') == '1'
+    incluir_retrabalho = (request.GET.get('retrabalho') or '') == '1'
+    somente_risco = (request.GET.get('risco') or '') == '1'
+    busca = (request.GET.get('q') or '').strip()
+
+    try:
+        data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d').date()
+        data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        data_inicio = ini_padrao
+        data_fim = fim_padrao
+
+    status_base = []
+    if status_filtro == 'aprovado':
+        status_base = ['aprovado']
+    elif status_filtro == 'entregue':
+        status_base = ['entregue']
+    elif status_filtro == 'aprovado_entregue':
+        status_base = ['aprovado', 'entregue']
+    else:
+        status_base = ['aprovado', 'entregue']
+
+    if incluir_retrabalho and 'retrabalho' not in status_base:
+        status_base.append('retrabalho')
+
+    qs = (
+        Orcamento.objects.select_related('cliente', 'veiculo', 'criado_por')
+        .filter(
+            data_prevista_entrega__isnull=False,
+            data_prevista_entrega__gte=data_inicio,
+            data_prevista_entrega__lte=data_fim,
+            status__in=status_base,
+        )
+    )
+
+    if not incluir_perda_total:
+        qs = qs.filter(perda_total=False)
+
+    if busca:
+        qs = qs.filter(
+            Q(numero__icontains=busca)
+            | Q(cliente__nome__icontains=busca)
+            | Q(veiculo__placa__icontains=busca)
+        )
+
+    if somente_risco:
+        qs = qs.filter(pecas__status__in=['solicitada', 'falta_comprar', 'comprada', 'atrasada']).distinct()
+
+    total_servicos_expr = Coalesce(Sum('itens__valor', filter=Q(itens__retrabalho=False)), Value(0), output_field=DecimalField())
+    prejuizo_retrabalho_expr = Coalesce(Sum('itens__valor', filter=Q(itens__retrabalho=True)), Value(0), output_field=DecimalField())
+    total_pecas_expr = Coalesce(Sum('pecas__valor_venda', filter=Q(pecas__fornecedor_tipo='escritorio')), Value(0), output_field=DecimalField())
+    total_terceiros_expr = Coalesce(Sum('servicos_terceiros__valor'), Value(0), output_field=DecimalField())
+
+    total_geral_expr = ExpressionWrapper(
+        total_servicos_expr + total_pecas_expr + total_terceiros_expr,
+        output_field=DecimalField(max_digits=12, decimal_places=2),
+    )
+    total_com_desconto_expr = ExpressionWrapper(
+        total_geral_expr - Coalesce(F('desconto'), Value(0), output_field=DecimalField()),
+        output_field=DecimalField(max_digits=12, decimal_places=2),
+    )
+
+    qs = qs.annotate(
+        total_servicos=total_servicos_expr,
+        prejuizo_retrabalho=prejuizo_retrabalho_expr,
+        total_pecas=total_pecas_expr,
+        total_terceiros=total_terceiros_expr,
+        total_geral=total_geral_expr,
+        total_com_desconto=total_com_desconto_expr,
+        pecas_pendentes=Count('pecas', filter=Q(pecas__status__in=['solicitada', 'falta_comprar', 'comprada', 'atrasada']), distinct=True),
+        pecas_atrasadas=Count('pecas', filter=Q(pecas__status='atrasada'), distinct=True),
+    ).order_by('data_prevista_entrega', 'criado_em')
+
+    totais = qs.aggregate(
+        qtd=Count('id', distinct=True),
+        servicos=Coalesce(Sum('total_servicos'), Value(0), output_field=DecimalField()),
+        pecas=Coalesce(Sum('total_pecas'), Value(0), output_field=DecimalField()),
+        terceiros=Coalesce(Sum('total_terceiros'), Value(0), output_field=DecimalField()),
+        total=Coalesce(Sum('total_com_desconto'), Value(0), output_field=DecimalField()),
+        com_peca_pendente=Count('id', filter=Q(pecas_pendentes__gt=0), distinct=True),
+        com_peca_atrasada=Count('id', filter=Q(pecas_atrasadas__gt=0), distinct=True),
+    )
+
+    top_maiores = qs.order_by('-total_com_desconto', '-criado_em')[:5]
+
+    context = {
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
+        'data_inicio_str': data_inicio_str,
+        'data_fim_str': data_fim_str,
+        'status_filtro': status_filtro,
+        'incluir_perda_total': incluir_perda_total,
+        'incluir_retrabalho': incluir_retrabalho,
+        'somente_risco': somente_risco,
+        'busca': busca,
+        'orcamentos': qs[:1000],
+        'top_maiores': top_maiores,
+        'totais': {
+            'qtd': totais.get('qtd') or 0,
+            'servicos': totais.get('servicos') or 0,
+            'pecas': totais.get('pecas') or 0,
+            'terceiros': totais.get('terceiros') or 0,
+            'total': totais.get('total') or 0,
+            'com_peca_pendente': totais.get('com_peca_pendente') or 0,
+            'com_peca_atrasada': totais.get('com_peca_atrasada') or 0,
+        },
+    }
+    return render(request, 'orcamentos/relatorio_orcamentos_entregas.html', context)

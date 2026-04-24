@@ -13,11 +13,10 @@ class PecaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filtra fornecedores para mostrar apenas quem tem categoria Fornecedor ou Ambos
-        self.fields['fornecedor'].queryset = Cliente.objects.filter(
-            categoria__in=['fornecedor', 'ambos'],
-            ativo=True
-        )
+        fornecedores = Cliente.objects.filter(ativo=True)
+        if self.instance and getattr(self.instance, 'fornecedor_id', None):
+            fornecedores = fornecedores | Cliente.objects.filter(id=self.instance.fornecedor_id)
+        self.fields['fornecedor'].queryset = fornecedores.distinct().order_by('nome')
         orcamentos_ativos = Orcamento.objects.exclude(status__in=['entregue', 'rejeitado', 'cancelado'])
         ordens_ativas = OrdemServico.objects.exclude(status__in=['concluida', 'entregue', 'cancelada'])
 
@@ -88,8 +87,8 @@ class PecaForm(forms.ModelForm):
                 'readonly': 'readonly', 
                 'x-model': 'valor_venda'
             }),
-            'prazo_compra': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            'data_compra': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            'prazo_chegada': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'prazo_compra': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'data_compra': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
+            'prazo_chegada': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-input', 'type': 'date'}),
             'observacao': forms.Textarea(attrs={'class': 'form-input', 'rows': '3'}),
         }

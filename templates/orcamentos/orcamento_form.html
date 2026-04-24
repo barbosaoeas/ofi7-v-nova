@@ -834,6 +834,27 @@ function orcamentoForm() {
           this.recalcular();
         });
       });
+
+      document.querySelectorAll('.peca-form-row .item-peca-catalogo').forEach(el => {
+        if (!el.value) return;
+        const row = el.closest('.peca-form-row');
+        if (!row) return;
+        const info = this.catalogoPecasMap[String(el.value)];
+        if (!info) return;
+
+        const tipo = row.querySelector('.item-peca-tipo');
+        const qtd = row.querySelector('.item-peca-qtd');
+        const custo = row.querySelector('.item-peca-custo');
+        const lucro = row.querySelector('.item-peca-lucro');
+        const desc = row.querySelector('.item-peca-descricao');
+        const opt = el.options[el.selectedIndex];
+
+        if (desc && (!desc.value || !desc.value.trim()) && opt && opt.value) desc.value = opt.text;
+        if (tipo && (!tipo.value || !String(tipo.value).trim())) tipo.value = info.fornecedor_tipo || 'escritorio';
+        if (qtd && (!qtd.value || String(qtd.value).trim() === '0')) qtd.value = info.quantidade || 1;
+        if (custo && (!custo.value || !String(custo.value).trim())) custo.value = info.valor_custo || '';
+        if (lucro && (!lucro.value || !String(lucro.value).trim())) lucro.value = info.percentual_lucro || 30;
+      });
       
       // Atualizar selects travados ao mudar etapa em um item do Django
       document.querySelectorAll('.etapa-select').forEach(el => {

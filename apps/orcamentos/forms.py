@@ -349,9 +349,21 @@ class OrcamentoPecaForm(forms.ModelForm):
         self.fields['percentual_lucro'].required = False
         try:
             if self.instance and getattr(self.instance, 'descricao', None):
-                item = CatalogoPeca.objects.filter(descricao=self.instance.descricao).first()
+                descricao = (self.instance.descricao or '').strip()
+                item = (
+                    CatalogoPeca.objects.filter(descricao=descricao).first()
+                    or CatalogoPeca.objects.filter(descricao__iexact=descricao).first()
+                )
                 if item:
                     self.fields['catalogo'].initial = item
+                    if not getattr(self.instance, 'fornecedor_tipo', None):
+                        self.fields['fornecedor_tipo'].initial = item.fornecedor_tipo
+                    if not getattr(self.instance, 'quantidade', None):
+                        self.fields['quantidade'].initial = item.quantidade
+                    if getattr(self.instance, 'valor_custo', None) in [None, '']:
+                        self.fields['valor_custo'].initial = item.valor_custo
+                    if getattr(self.instance, 'percentual_lucro', None) in [None, '']:
+                        self.fields['percentual_lucro'].initial = item.percentual_lucro
         except Exception:
             pass
         self.fields['descricao'].label = 'Peça'

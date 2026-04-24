@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Funcionario
+from .models import Funcionario, LogAcesso
 
 
 @admin.register(Funcionario)
@@ -23,3 +23,10 @@ class FuncionarioAdmin(UserAdmin):
     
     readonly_fields = ['criado_em', 'atualizado_em']
 
+
+@admin.register(LogAcesso)
+class LogAcessoAdmin(admin.ModelAdmin):
+    list_display = ['criado_em', 'usuario', 'evento', 'ip', 'caminho']
+    list_filter = ['evento', 'criado_em']
+    search_fields = ['usuario__username', 'usuario__first_name', 'usuario__last_name', 'ip', 'caminho', 'user_agent']
+    ordering = ['-criado_em']

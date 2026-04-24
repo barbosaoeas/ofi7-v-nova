@@ -7,6 +7,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
 from apps.comissoes.views import relatorio_comissoes
+from apps.orcamentos.views_crud import relatorio_orcamentos_entregas
 
 urlpatterns = [
     # Redirecionar login padrão para o login customizado
@@ -27,6 +28,7 @@ urlpatterns = [
 
     # Relatórios
     path('relatorios/comissoes/', relatorio_comissoes, name='relatorios_comissoes'),
+    path('relatorios/orcamentos-entregas/', relatorio_orcamentos_entregas, name='relatorios_orcamentos_entregas'),
 
     # Admin
     path('admin/', admin.site.urls),
