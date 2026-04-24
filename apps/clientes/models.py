@@ -30,6 +30,8 @@ class Cliente(models.Model):
     # Contato
     telefone = models.CharField('Telefone', max_length=20)
     email = models.EmailField('E-mail', blank=True)
+    proprietario = models.CharField('Proprietário', max_length=200, blank=True)
+    contato_proprietario = models.CharField('Contato do Proprietário', max_length=30, blank=True)
     
     # Endereço
     cep = models.CharField('CEP', max_length=10, blank=True)
@@ -62,4 +64,3 @@ class Cliente(models.Model):
     
     def __str__(self):
         return self.nome
-

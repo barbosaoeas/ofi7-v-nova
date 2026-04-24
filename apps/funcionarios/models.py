@@ -4,6 +4,7 @@ Models para Funcionários
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.signals import user_logged_in, user_logged_out
+from django.db.utils import OperationalError, ProgrammingError
 from django.dispatch import receiver
 
 
@@ -134,23 +135,29 @@ def _ip_do_request(request):
 def registrar_login(sender, request, user, **kwargs):
     if not user or not getattr(user, 'pk', None):
         return
-    LogAcesso.objects.create(
-        usuario=user,
-        evento='login',
-        ip=_ip_do_request(request),
-        user_agent=(request.META.get('HTTP_USER_AGENT') or '')[:500] if request else '',
-        caminho=(getattr(request, 'path', '') or '')[:255] if request else '',
-    )
+    try:
+        LogAcesso.objects.create(
+            usuario=user,
+            evento='login',
+            ip=_ip_do_request(request),
+            user_agent=(request.META.get('HTTP_USER_AGENT') or '')[:500] if request else '',
+            caminho=(getattr(request, 'path', '') or '')[:255] if request else '',
+        )
+    except (OperationalError, ProgrammingError):
+        return
 
 
 @receiver(user_logged_out)
 def registrar_logout(sender, request, user, **kwargs):
     if not user or not getattr(user, 'pk', None):
         return
-    LogAcesso.objects.create(
-        usuario=user,
-        evento='logout',
-        ip=_ip_do_request(request),
-        user_agent=(request.META.get('HTTP_USER_AGENT') or '')[:500] if request else '',
-        caminho=(getattr(request, 'path', '') or '')[:255] if request else '',
-    )
+    try:
+        LogAcesso.objects.create(
+            usuario=user,
+            evento='logout',
+            ip=_ip_do_request(request),
+            user_agent=(request.META.get('HTTP_USER_AGENT') or '')[:500] if request else '',
+            caminho=(getattr(request, 'path', '') or '')[:255] if request else '',
+        )
+    except (OperationalError, ProgrammingError):
+        return

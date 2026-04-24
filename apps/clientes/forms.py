@@ -12,9 +12,9 @@ class ClienteForm(forms.ModelForm):
         model = Cliente
         fields = [
             'tipo', 'categoria', 'nome', 'cpf_cnpj', 'rg_ie',
-            'telefone', 'email',
+            'telefone', 'email', 'proprietario', 'contato_proprietario',
             'cep', 'endereco', 'numero', 'complemento',
-            'estado', 'observacoes', 'ativo', 'atividade_fornecedor'
+            'bairro', 'cidade', 'estado', 'observacoes', 'ativo', 'atividade_fornecedor'
         ]
         widgets = {
             'tipo': forms.Select(attrs={'class': 'form-select'}),
@@ -24,6 +24,8 @@ class ClienteForm(forms.ModelForm):
             'rg_ie': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'RG ou IE'}),
             'telefone': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '(11) 1234-5678'}),
             'email': forms.EmailInput(attrs={'class': 'form-input', 'placeholder': 'email@exemplo.com'}),
+            'proprietario': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Nome do proprietário'}),
+            'contato_proprietario': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '(11) 99999-9999'}),
             'cep': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '00000-000'}),
             'endereco': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Rua, Avenida...'}),
             'numero': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '123'}),
