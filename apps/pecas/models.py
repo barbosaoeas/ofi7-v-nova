@@ -174,6 +174,30 @@ class Peca(models.Model):
         return 0
     
     def save(self, *args, **kwargs):
+        if self.ordem_id and not self.orcamento_id:
+            try:
+                self.orcamento = self.ordem.orcamento
+            except Exception:
+                pass
+
+        if self.orcamento_id and not self.ordem_id:
+            try:
+                self.ordem = self.orcamento.ordem_servico
+            except Exception:
+                pass
+
+        if not self.veiculo_id:
+            if self.ordem_id:
+                try:
+                    self.veiculo = self.ordem.veiculo
+                except Exception:
+                    pass
+            elif self.orcamento_id:
+                try:
+                    self.veiculo = self.orcamento.veiculo
+                except Exception:
+                    pass
+
         # Automação de Status
         if self.status != 'cancelada':
             if self.data_recebimento:

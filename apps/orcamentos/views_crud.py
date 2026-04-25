@@ -196,9 +196,11 @@ def orcamento_create(request):
         form = OrcamentoForm(request.POST)
         formset = OrcamentoItemFormSet(request.POST)
         terceiro_formset = OrcamentoTerceiroFormSet(request.POST)
-        peca_formset = OrcamentoPecaFormSet(request.POST)
+        tem_formset_pecas = 'pecas-TOTAL_FORMS' in request.POST
+        peca_formset = OrcamentoPecaFormSet(request.POST) if tem_formset_pecas else OrcamentoPecaFormSet()
 
-        if form.is_valid() and formset.is_valid() and terceiro_formset.is_valid() and peca_formset.is_valid():
+        pecas_ok = True if not tem_formset_pecas else peca_formset.is_valid()
+        if form.is_valid() and formset.is_valid() and terceiro_formset.is_valid() and pecas_ok:
             with transaction.atomic():
                 orcamento = form.save(commit=False)
                 orcamento.criado_por = request.user
@@ -210,15 +212,17 @@ def orcamento_create(request):
                 terceiro_formset.instance = orcamento
                 terceiro_formset.save()
 
-                peca_formset.instance = orcamento
-                pecas = peca_formset.save(commit=False)
-                for p in pecas:
-                    p.solicitado_por = request.user
-                    p.orcamento = orcamento
-                    p.veiculo = orcamento.veiculo
-                    p.save()
-                for obj in peca_formset.deleted_objects:
-                    obj.delete()
+                if tem_formset_pecas:
+                    peca_formset.instance = orcamento
+                    pecas = peca_formset.save(commit=False)
+                    for p in pecas:
+                        p.solicitado_por = request.user
+                        p.orcamento = orcamento
+                        if orcamento.veiculo_id and not p.veiculo_id:
+                            p.veiculo = orcamento.veiculo
+                        p.save()
+                    for obj in peca_formset.deleted_objects:
+                        obj.delete()
 
                 if orcamento.status in ['aprovado', 'retrabalho']:
                     from apps.ordens.services import OrdemServicoService
@@ -323,22 +327,26 @@ def orcamento_update(request, pk):
         form = OrcamentoForm(request.POST, instance=orcamento)
         formset = OrcamentoItemFormSet(request.POST, instance=orcamento)
         terceiro_formset = OrcamentoTerceiroFormSet(request.POST, instance=orcamento)
-        peca_formset = OrcamentoPecaFormSet(request.POST, instance=orcamento)
+        tem_formset_pecas = 'pecas-TOTAL_FORMS' in request.POST
+        peca_formset = OrcamentoPecaFormSet(request.POST, instance=orcamento) if tem_formset_pecas else OrcamentoPecaFormSet(instance=orcamento)
 
-        if form.is_valid() and formset.is_valid() and terceiro_formset.is_valid() and peca_formset.is_valid():
+        pecas_ok = True if not tem_formset_pecas else peca_formset.is_valid()
+        if form.is_valid() and formset.is_valid() and terceiro_formset.is_valid() and pecas_ok:
             with transaction.atomic():
                 orcamento_salvo = form.save()
                 formset.save()
                 terceiro_formset.save()
-                pecas = peca_formset.save(commit=False)
-                for p in pecas:
-                    if not p.solicitado_por_id:
-                        p.solicitado_por = request.user
-                    p.orcamento = orcamento_salvo
-                    p.veiculo = orcamento_salvo.veiculo
-                    p.save()
-                for obj in peca_formset.deleted_objects:
-                    obj.delete()
+                if tem_formset_pecas:
+                    pecas = peca_formset.save(commit=False)
+                    for p in pecas:
+                        if not p.solicitado_por_id:
+                            p.solicitado_por = request.user
+                        p.orcamento = orcamento_salvo
+                        if orcamento_salvo.veiculo_id and not p.veiculo_id:
+                            p.veiculo = orcamento_salvo.veiculo
+                        p.save()
+                    for obj in peca_formset.deleted_objects:
+                        obj.delete()
 
                 if revisao:
                     try:
@@ -478,7 +486,7 @@ def orcamento_update(request, pk):
 @login_required
 def orcamento_detail(request, pk):
     """Visualiza o orçamento estilo invoice/proposta"""
-    from django.db.models import Prefetch
+    from django.db.models import Prefetch, Q
     from apps.pecas.models import Peca
 
     orcamento = get_object_or_404(
@@ -496,11 +504,61 @@ def orcamento_detail(request, pk):
         ),
         pk=pk
     )
+    os_obj = None
+    try:
+        os_obj = orcamento.ordem_servico
+    except Exception:
+        os_obj = None
+
+    if os_obj:
+        Peca.objects.filter(ordem=os_obj, orcamento__isnull=True).update(orcamento=orcamento)
+        Peca.objects.filter(orcamento=orcamento, ordem__isnull=True).update(ordem=os_obj)
+        if os_obj.veiculo_id:
+            Peca.objects.filter(ordem=os_obj, veiculo__isnull=True).update(veiculo=os_obj.veiculo)
+            Peca.objects.filter(orcamento=orcamento, veiculo__isnull=True).update(veiculo=os_obj.veiculo)
+
+    pecas_filtro = Q(orcamento=orcamento)
+    if os_obj:
+        pecas_filtro |= Q(ordem=os_obj)
+
+    pecas_qs = (
+        Peca.objects.filter(pecas_filtro)
+        .select_related('aditivo', 'etapa_bloqueada')
+        .order_by('-atualizado_em', '-id')
+    )
+
+    status_rank = {
+        'recebida': 5,
+        'atrasada': 4,
+        'comprada': 3,
+        'falta_comprar': 2,
+        'solicitada': 1,
+        'cancelada': 0,
+    }
+
+    melhores_por_chave = {}
+    for p in pecas_qs:
+        descricao = (p.descricao or '').strip()
+        chave = (descricao.casefold(), p.aditivo_id or 0)
+        score = (
+            1 if p.data_recebimento else 0,
+            1 if p.prazo_chegada else 0,
+            1 if p.data_compra else 0,
+            status_rank.get(p.status, 0),
+            p.atualizado_em,
+            p.id,
+        )
+        atual = melhores_por_chave.get(chave)
+        if not atual or score > atual[0]:
+            melhores_por_chave[chave] = (score, p)
+
+    pecas = [v[1] for v in melhores_por_chave.values()]
+    pecas.sort(key=lambda x: (x.criado_em, x.id), reverse=True)
     revisao_aberta = OrcamentoRevisao.objects.filter(
         orcamento=orcamento,
         confirmado_em__isnull=True,
     ).order_by('-criado_em').first()
-    context = {'orcamento': orcamento, 'revisao_aberta': revisao_aberta}
+    context = {'orcamento': orcamento, 'revisao_aberta': revisao_aberta, 'pecas': pecas, 'return_to': request.get_full_path()}
     return render(request, 'orcamentos/orcamento_detail.html', context)
 
 
@@ -619,7 +677,8 @@ def orcamento_aditivo_pecas_create(request, pk):
                 for peca in pecas:
                     peca.solicitado_por = request.user
                     peca.orcamento = orcamento
-                    peca.veiculo = orcamento.veiculo
+                    if orcamento.veiculo_id and not peca.veiculo_id:
+                        peca.veiculo = orcamento.veiculo
                     peca.ordem = orcamento.ordem_servico
                     peca.aditivo = aditivo
                     peca.save()

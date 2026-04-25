@@ -11,6 +11,15 @@ from apps.veiculos.models import Veiculo
 
 class PecaForm(forms.ModelForm):
     """Formulário para Cadastro de Peça"""
+    data_recebimento = forms.DateTimeField(
+        required=False,
+        input_formats=['%Y-%m-%dT%H:%M'],
+        widget=forms.DateTimeInput(
+            format='%Y-%m-%dT%H:%M',
+            attrs={'class': 'form-input', 'type': 'datetime-local'},
+        ),
+        label='Recebida em',
+    )
 
     def __init__(self, *args, **kwargs):
         cliente_id = kwargs.pop('cliente_id', None)
@@ -105,7 +114,7 @@ class PecaForm(forms.ModelForm):
         fields = [
             'veiculo', 'orcamento', 'ordem', 'descricao', 'quantidade', 'fornecedor_tipo', 
             'fornecedor', 'fornecedor_nome', 'valor_custo', 'percentual_lucro', 'valor_venda',
-            'prazo_compra', 'data_compra', 'prazo_chegada', 'observacao'
+            'prazo_compra', 'data_compra', 'prazo_chegada', 'data_recebimento', 'observacao'
         ]
         widgets = {
             'veiculo': forms.Select(attrs={'class': 'form-select'}),

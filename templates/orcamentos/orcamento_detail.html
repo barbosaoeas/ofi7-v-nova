@@ -359,7 +359,7 @@
         <i class="fas fa-boxes text-purple-500"></i> Peças
       </div>
 
-      {% if orcamento.pecas.all %}
+      {% if pecas %}
       <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
         <table class="w-full text-sm">
           <thead class="bg-gray-50 border-b border-gray-200">
@@ -376,7 +376,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            {% for p in orcamento.pecas.all %}
+            {% for p in pecas %}
             <tr class="hover:bg-gray-50 transition">
               <td class="px-4 py-3.5 text-gray-500 font-mono text-xs">{{ forloop.counter }}</td>
               <td class="px-4 py-3.5 text-gray-900 font-semibold">{{ p.descricao }}</td>
@@ -428,13 +428,10 @@
               <td class="px-4 py-3.5 text-right">
                 {% if p.status != 'recebida' and user.is_authenticated %}
                   {% if user.is_superuser or user.perfil == 'admin' or user.perfil == 'gerente' or user.perfil == 'supervisor' or user.perfil == 'financeiro' %}
-                    <form method="post" action="{% url 'pecas:marcar_recebida' p.pk %}" class="inline">
-                      {% csrf_token %}
-                      <button type="submit"
-                              class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
-                        <i class="fas fa-check mr-1"></i> Confirmar chegada
-                      </button>
-                    </form>
+                    <a href="{% url 'pecas:update' p.pk %}?confirmar=1&next={{ return_to|urlencode }}"
+                       class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition inline-flex items-center">
+                      <i class="fas fa-pen mr-1"></i> Dar entrada
+                    </a>
                   {% else %}
                     —
                   {% endif %}
