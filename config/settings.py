@@ -127,11 +127,11 @@ USE_I18N = True
 USE_TZ = True
 
 # STATIC
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # MEDIA
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # DEFAULT PRIMARY KEY
