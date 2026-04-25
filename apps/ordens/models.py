@@ -154,6 +154,17 @@ class OrdemEtapa(models.Model):
         help_text='Ordem de execução da etapa no processo'
     )
     valor_servico = models.DecimalField('Valor do Serviço', max_digits=10, decimal_places=2)
+
+    EXECUCAO_CHOICES = [
+        ('oficina', 'Oficina'),
+        ('terceiro', 'Terceiro'),
+    ]
+    execucao = models.CharField(
+        'Execução',
+        max_length=10,
+        choices=EXECUCAO_CHOICES,
+        default='oficina',
+    )
     horas_orcadas = models.DecimalField('Horas Orçadas', max_digits=6, decimal_places=2, null=True, blank=True)
     horas_gastas_real = models.DecimalField('Horas Realizadas', max_digits=6, decimal_places=2, null=True, blank=True)
 

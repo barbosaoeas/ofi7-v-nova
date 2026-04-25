@@ -14,6 +14,16 @@ class Command(BaseCommand):
         criadas = 0
         atualizadas = 0
         
+        try:
+            etapa_final = next((e for e in ETAPAS_PADRAO if e.get('nome') == 'Finalizado'), None)
+            if etapa_final:
+                EtapaPadrao.objects.filter(nome='Finalizado').update(sequencia=etapa_final.get('sequencia') or 10)
+            etapa_prep = next((e for e in ETAPAS_PADRAO if e.get('nome') == 'Preparação Entrega'), None)
+            if etapa_prep:
+                EtapaPadrao.objects.filter(nome='Preparação Entrega').update(sequencia=etapa_prep.get('sequencia') or 9)
+        except Exception:
+            pass
+
         for etapa_data in ETAPAS_PADRAO:
             etapa, created = EtapaPadrao.objects.update_or_create(
                 nome=etapa_data['nome'],
@@ -41,4 +51,3 @@ class Command(BaseCommand):
                 f'\nConcluído! {criadas} criadas, {atualizadas} atualizadas.'
             )
         )
-

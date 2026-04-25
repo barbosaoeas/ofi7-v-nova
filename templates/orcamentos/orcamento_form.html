@@ -285,6 +285,12 @@
                 {% if item_form.etapa.errors %}
                   <p class="text-red-400 text-[10px] mt-1">{{ item_form.etapa.errors.0 }}</p>
                 {% endif %}
+                <div class="mt-2">
+                  {{ item_form.execucao | add_class:"w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-gray-200 text-xs focus:outline-none focus:border-yellow-400/60 transition" }}
+                  {% if item_form.execucao.errors %}
+                    <p class="text-red-400 text-[10px] mt-1">{{ item_form.execucao.errors.0 }}</p>
+                  {% endif %}
+                </div>
               </div>
               <div class="col-span-1">
                 {{ item_form.horas_previstas | add_class:"w-full min-w-[84px] bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-gray-200 text-sm text-center focus:outline-none focus:border-yellow-400/60 transition" }}
@@ -341,6 +347,12 @@
                   <template x-for="e in etapas" :key="e.id">
                     <option :value="e.id" x-text="e.nome" :disabled="isEtapaSelecionada(e.id, idx, selectRenders)"></option>
                   </template>
+                </select>
+                <select :name="'itens-' + ({{ formset.total_form_count }} + idx) + '-execucao'"
+                        x-model="item.execucao"
+                        class="w-full mt-2 bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-gray-200 text-xs focus:outline-none focus:border-yellow-400/60 transition">
+                  <option value="oficina">Oficina</option>
+                  <option value="terceiro">Terceiro</option>
                 </select>
               </div>
               <div class="col-span-1">
@@ -901,7 +913,7 @@ function orcamentoForm() {
     },
 
     adicionarItem() {
-      this.novosItens.push({ descricao: '', etapa: '', horas_previstas: '', valor: '', retrabalho: false });
+      this.novosItens.push({ descricao: '', etapa: '', execucao: 'oficina', horas_previstas: '', valor: '', retrabalho: false });
       this.$nextTick(() => { this.atualizarSelects(); });
     },
 

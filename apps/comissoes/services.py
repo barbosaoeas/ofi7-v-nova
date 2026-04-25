@@ -26,6 +26,9 @@ class ComissaoService:
         Returns:
             list[Comissao]: Comissões criadas/atualizadas
         """
+        if getattr(etapa, 'execucao', 'oficina') != 'oficina':
+            return []
+
         # Validações
         if etapa.status != 'finalizada':
             raise ValueError("Apenas etapas finalizadas geram comissão")

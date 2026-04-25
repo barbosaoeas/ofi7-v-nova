@@ -37,6 +37,7 @@ def _snapshot_orcamento_para_revisao(orcamento):
             'horas_previstas': str(i.horas_previstas) if i.horas_previstas is not None else None,
             'valor': str(i.valor) if i.valor is not None else None,
             'retrabalho': bool(getattr(i, 'retrabalho', False)),
+            'execucao': getattr(i, 'execucao', 'oficina'),
             'ordem': i.ordem,
         }
         for i in orcamento.itens.all().select_related('etapa')
@@ -404,6 +405,10 @@ def orcamento_update(request, pk):
                                     if etapa_existente.horas_orcadas != item.horas_previstas:
                                         etapa_existente.horas_orcadas = item.horas_previstas
                                         update_fields_etapa.append('horas_orcadas')
+                                    execucao = getattr(item, 'execucao', None) or 'oficina'
+                                    if getattr(etapa_existente, 'execucao', 'oficina') != execucao:
+                                        etapa_existente.execucao = execucao
+                                        update_fields_etapa.append('execucao')
                                     if update_fields_etapa:
                                         etapa_existente.save(update_fields=update_fields_etapa)
                                 continue
@@ -419,6 +424,7 @@ def orcamento_update(request, pk):
                                 sequencia=sequencia_desejada,
                                 valor_servico=(item.valor or 0) if not getattr(item, 'retrabalho', False) else 0,
                                 horas_orcadas=item.horas_previstas,
+                                execucao=getattr(item, 'execucao', 'oficina') or 'oficina',
                                 status='aguardando',
                             )
                             existentes_por_sequencia[etapa_nova.sequencia] = etapa_nova
@@ -534,6 +540,50 @@ def orcamento_detail(request, pk):
         os_obj = None
 
     if os_obj:
+        try:
+            tem_mecanica_no_orc = orcamento.itens.filter(etapa__nome__icontains='mec').exists()
+        except Exception:
+            tem_mecanica_no_orc = False
+
+        if tem_mecanica_no_orc:
+            try:
+                etapa_prep_seq8 = (
+                    os_obj.etapas.filter(nome__icontains='prepara')
+                    .filter(nome__icontains='entreg')
+                    .filter(sequencia=8)
+                    .first()
+                )
+                if etapa_prep_seq8 and not os_obj.etapas.filter(sequencia=9).exists():
+                    etapa_prep_seq8.sequencia = 9
+                    etapa_prep_seq8.save(update_fields=['sequencia'])
+            except Exception:
+                pass
+
+            try:
+                etapas_prep = list(
+                    os_obj.etapas.filter(nome__icontains='prepara')
+                    .filter(nome__icontains='entreg')
+                    .order_by('sequencia', 'id')
+                )
+                if len(etapas_prep) > 1:
+                    for extra in etapas_prep[1:]:
+                        pode_apagar = (
+                            extra.status in ['aguardando', 'programado']
+                            and not getattr(extra, 'funcionario_id', None)
+                            and not getattr(extra, 'data_programada', None)
+                            and not getattr(extra, 'data_inicio', None)
+                            and not getattr(extra, 'data_fim', None)
+                            and getattr(extra, 'horas_gastas_real', None) in [None, 0, '0']
+                            and not (getattr(extra, 'descricao', '') or '').strip()
+                        )
+                        if pode_apagar:
+                            try:
+                                extra.delete()
+                            except Exception:
+                                pass
+            except Exception:
+                pass
+
         Peca.objects.filter(ordem=os_obj, orcamento__isnull=True).update(orcamento=orcamento)
         Peca.objects.filter(orcamento=orcamento, ordem__isnull=True).update(ordem=os_obj)
         if os_obj.veiculo_id:

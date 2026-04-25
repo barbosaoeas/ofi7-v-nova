@@ -176,7 +176,7 @@ class OrcamentoItemForm(forms.ModelForm):
 
     class Meta:
         model = OrcamentoItem
-        fields = ['descricao', 'etapa', 'horas_previstas', 'valor', 'retrabalho']
+        fields = ['descricao', 'etapa', 'execucao', 'horas_previstas', 'valor', 'retrabalho']
         widgets = {
             'descricao': forms.TextInput(attrs={
                 'class': (
@@ -191,6 +191,13 @@ class OrcamentoItemForm(forms.ModelForm):
                     'w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 '
                     'text-gray-200 text-sm focus:outline-none '
                     'focus:border-yellow-400/60 transition etapa-select'
+                ),
+            }),
+            'execucao': forms.Select(attrs={
+                'class': (
+                    'w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 '
+                    'text-gray-200 text-sm focus:outline-none '
+                    'focus:border-yellow-400/60 transition'
                 ),
             }),
             'horas_previstas': forms.NumberInput(attrs={
@@ -222,6 +229,7 @@ class OrcamentoItemForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['descricao'].label = 'Descrição do Serviço'
         self.fields['etapa'].label = 'Etapa'
+        self.fields['execucao'].label = 'Execução'
         self.fields['valor'].label = 'Valor (R$)'
         self.fields['retrabalho'].label = 'Retrabalho'
         self.fields['etapa'].empty_label = 'Selecione a Etapa'

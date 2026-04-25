@@ -78,6 +78,7 @@ class OrdemServicoService:
                 sequencia=sequencia,
                 valor_servico=(item.valor if not getattr(item, 'retrabalho', False) else 0),
                 horas_orcadas=item.horas_previstas,
+                execucao=getattr(item, 'execucao', 'oficina') or 'oficina',
                 status='aguardando'
             )
         
@@ -151,14 +152,42 @@ class OrdemEtapaService:
         'Pintura': 5,
         'Montagem': 6,
         'Polimento': 7,
-        'Preparação Entrega': 8,
-        'Finalizado': 9,
+        'Mecânica': 8,
+        'Mecanica': 8,
+        'Preparação Entrega': 9,
+        'Finalizado': 10,
     }
     
     @staticmethod
     def obter_sequencia_por_nome(nome):
         """Retorna a sequência padrão para um nome de etapa"""
-        return OrdemEtapaService.SEQUENCIAS.get(nome, 99)
+        if not nome:
+            return 99
+        direto = OrdemEtapaService.SEQUENCIAS.get(nome)
+        if direto is not None:
+            return direto
+        n = str(nome).strip().lower()
+        if 'patio' in n or 'pátio' in n:
+            return 1
+        if 'desmont' in n:
+            return 2
+        if 'funilar' in n:
+            return 3
+        if 'prepara' in n and 'pint' in n:
+            return 4
+        if 'pintur' in n:
+            return 5
+        if 'montag' in n:
+            return 6
+        if 'polim' in n:
+            return 7
+        if 'mec' in n:
+            return 8
+        if 'prepara' in n and 'entreg' in n:
+            return 9
+        if 'final' in n:
+            return 10
+        return 99
     
     @staticmethod
     @transaction.atomic

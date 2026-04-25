@@ -117,7 +117,13 @@ def kanban_producao(request):
 
     seq_to_nome_coluna = {dados['etapa_padrao'].sequencia: nome for nome, dados in colunas.items()}
     nome_patio = seq_to_nome_coluna.get(1, 'Pátio')
-    nome_finalizado = seq_to_nome_coluna.get(9, 'Finalizado')
+    seq_finalizado = max(seq_to_nome_coluna.keys()) if seq_to_nome_coluna else 9
+    nome_finalizado = seq_to_nome_coluna.get(seq_finalizado, 'Finalizado')
+    seq_prepara_entrega = next(
+        (e.sequencia for e in etapas_padrao if 'prepara' in e.nome.lower() and 'entreg' in e.nome.lower()),
+        9,
+    )
+    seq_mecanica = next((e.sequencia for e in etapas_padrao if 'mec' in e.nome.lower()), 8)
 
     def inferir_sequencia_coluna(nome_etapa):
         if not nome_etapa:
@@ -127,8 +133,10 @@ def kanban_producao(request):
             return 2
         if 'funilar' in n:
             return 3
+        if 'mec' in n:
+            return seq_mecanica
         if 'prepara' in n and 'entreg' in n:
-            return 8
+            return seq_prepara_entrega
         if 'prepara' in n:
             return 4
         if 'pintur' in n:
@@ -138,7 +146,7 @@ def kanban_producao(request):
         if 'polim' in n:
             return 7
         if 'final' in n:
-            return 9
+            return seq_finalizado
         return None
     
     # Distribuir etapas nas colunas:

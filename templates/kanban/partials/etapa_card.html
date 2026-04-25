@@ -19,7 +19,16 @@
                 </span>
               {% endif %}
             </p>
-            <p class="text-xs font-semibold text-gray-800 leading-tight truncate">{{ etapa.nome }}</p>
+            <div class="flex items-center gap-1.5 min-w-0">
+                <p class="text-xs font-semibold text-gray-800 leading-tight truncate">{{ etapa.nome }}</p>
+                {% if etapa.execucao %}
+                  <span class="flex-shrink-0 text-[10px] font-extrabold px-2 py-0.5 rounded-full border
+                    {% if etapa.execucao == 'terceiro' %}bg-orange-100 text-orange-800 border-orange-200
+                    {% else %}bg-emerald-100 text-emerald-800 border-emerald-200{% endif %}">
+                    {% if etapa.execucao == 'terceiro' %}TERCEIRO{% else %}OFICINA{% endif %}
+                  </span>
+                {% endif %}
+            </div>
         </div>
         {% if etapa.funcionario and not etapa.modo_finalizado %}
         <div class="flex-shrink-0 ml-2" title="{{ etapa.funcionario.get_full_name }}">

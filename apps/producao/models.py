@@ -53,7 +53,7 @@ ETAPAS_PADRAO = [
     {'nome': 'Pintura', 'sequencia': 5, 'cor': '#3B82F6'},
     {'nome': 'Montagem', 'sequencia': 6, 'cor': '#8B5CF6'},
     {'nome': 'Polimento', 'sequencia': 7, 'cor': '#EC4899'},
-    {'nome': 'Preparação Entrega', 'sequencia': 8, 'cor': '#14B8A6'},
-    {'nome': 'Finalizado', 'sequencia': 9, 'cor': '#22C55E'},
+    {'nome': 'Mecânica', 'sequencia': 8, 'cor': '#0EA5E9'},
+    {'nome': 'Preparação Entrega', 'sequencia': 9, 'cor': '#14B8A6'},
+    {'nome': 'Finalizado', 'sequencia': 10, 'cor': '#22C55E'},
 ]
-

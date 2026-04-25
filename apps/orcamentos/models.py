@@ -270,6 +270,17 @@ class OrcamentoItem(models.Model):
         default=False,
         help_text='Marque se for uma etapa de retrabalho (perda/prejuízo sem receita)'
     )
+
+    EXECUCAO_CHOICES = [
+        ('oficina', 'Oficina'),
+        ('terceiro', 'Terceiro'),
+    ]
+    execucao = models.CharField(
+        'Execução',
+        max_length=10,
+        choices=EXECUCAO_CHOICES,
+        default='oficina',
+    )
     
     # Ordem de exibição
     ordem = models.IntegerField('Ordem', default=0)
