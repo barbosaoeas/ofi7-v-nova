@@ -186,6 +186,7 @@ def orcamento_list(request):
 def orcamento_create(request):
     """Cria um novo orçamento com itens dinâmicos"""
     token_atual = request.session.get('orcamento_create_token')
+    pecas_vinculadas = None
     if request.method == 'POST':
         token_post = (request.POST.get('_submit_token') or '').strip()
         tokens_usados = request.session.get('orcamento_create_tokens_usados', []) or []
@@ -273,6 +274,7 @@ def orcamento_create(request):
         'fornecedores_json': json.dumps(fornecedores),
         'catalogo_pecas': catalogo_pecas,
         'catalogo_pecas_json': catalogo_pecas_json,
+        'pecas_vinculadas': pecas_vinculadas,
     }
     return render(request, 'orcamentos/orcamento_form.html', context)
 
@@ -283,6 +285,7 @@ def orcamento_create(request):
 def orcamento_update(request, pk):
     """Edita um orçamento existente"""
     orcamento = get_object_or_404(Orcamento, pk=pk)
+    pecas_vinculadas = None
     revisao_id = (request.GET.get('revisao') or request.session.get('orcamento_revisao_id') or '').strip()
     revisao = None
     if revisao_id:
@@ -450,6 +453,25 @@ def orcamento_update(request, pk):
         terceiro_formset = OrcamentoTerceiroFormSet(instance=orcamento)
         peca_formset = OrcamentoPecaFormSet(instance=orcamento)
 
+    try:
+        from django.db.models import Q
+        from apps.pecas.models import Peca
+        os_obj = None
+        try:
+            os_obj = orcamento.ordem_servico
+        except Exception:
+            os_obj = None
+        pecas_filtro = Q(orcamento=orcamento)
+        if os_obj:
+            pecas_filtro |= Q(ordem=os_obj)
+        pecas_vinculadas = (
+            Peca.objects.filter(pecas_filtro)
+            .select_related('aditivo')
+            .order_by('-atualizado_em', '-id')
+        )
+    except Exception:
+        pecas_vinculadas = None
+
     etapas = list(EtapaPadrao.objects.filter(ativo=True).values('id', 'nome').order_by('ordem_default', 'nome'))
     fornecedores = list(Cliente.objects.filter(categoria__in=['fornecedor', 'ambos'], ativo=True).values('id', 'nome', 'atividade_fornecedor').order_by('nome'))
     catalogo_pecas = CatalogoPeca.objects.filter(ativo=True).order_by('descricao')
@@ -477,6 +499,7 @@ def orcamento_update(request, pk):
         'fornecedores_json': json.dumps(fornecedores),
         'catalogo_pecas': catalogo_pecas,
         'catalogo_pecas_json': catalogo_pecas_json,
+        'pecas_vinculadas': pecas_vinculadas,
     }
     return render(request, 'orcamentos/orcamento_form.html', context)
 
