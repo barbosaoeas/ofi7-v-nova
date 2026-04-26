@@ -83,6 +83,7 @@
         <p class="truncate"><i class="fas fa-car text-gray-400 mr-1"></i>
             <strong class="uppercase text-gray-800">{{ etapa.ordem.veiculo.placa }}</strong>
         </p>
+        <p class="truncate"><i class="fas fa-tag text-gray-400 mr-1"></i>{{ etapa.ordem.veiculo.modelo_veiculo.nome }}</p>
         {% if etapa.funcionario and not etapa.modo_finalizado %}
         <p class="truncate"><i class="fas fa-hard-hat text-indigo-400 mr-1"></i>{{ etapa.funcionario.first_name }}</p>
         {% endif %}
