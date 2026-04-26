@@ -24,6 +24,16 @@ class ForcarMudancaSenhaMiddleware:
                    not request.path.startswith('/media/') and \
                    not request.path.startswith('/admin/'):
                     return redirect('funcionarios:mudar_senha')
+
+            if getattr(request.user, 'perfil', '') == 'visual':
+                url_logout = reverse('funcionarios:logout')
+                if (
+                    not request.path.startswith('/kanban/')
+                    and not request.path.startswith(url_logout)
+                    and not request.path.startswith('/static/')
+                    and not request.path.startswith('/media/')
+                ):
+                    return redirect('kanban:producao')
         
         response = self.get_response(request)
         return response
