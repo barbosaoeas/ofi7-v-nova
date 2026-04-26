@@ -175,6 +175,8 @@ class OrdemEtapaService:
             return 3
         if 'prepara' in n and 'pint' in n:
             return 4
+        if 'prepara' in n and 'entreg' not in n:
+            return 4
         if 'pintur' in n:
             return 5
         if 'montag' in n:

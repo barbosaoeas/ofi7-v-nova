@@ -38,6 +38,22 @@ def ordem_update(request, pk):
     chegada_futura = bool(ordem.data_chegada_veiculo and ordem.data_chegada_veiculo > hoje)
 
     try:
+        from apps.ordens.models import OrdemEtapa
+        with transaction.atomic():
+            etapas = list(OrdemEtapa.objects.select_for_update().filter(ordem=ordem).order_by('sequencia', 'id'))
+            tem_pintura = any(e.nome and 'pintur' in e.nome.lower() for e in etapas)
+            if tem_pintura:
+                for e in etapas:
+                    if not e.nome:
+                        continue
+                    n = e.nome.lower()
+                    if 'prepara' in n and 'entreg' not in n and e.sequencia != 4:
+                        e.sequencia = 4
+                        e.save(update_fields=['sequencia'])
+    except Exception:
+        pass
+
+    try:
         tem_mecanica = ordem.orcamento.itens.filter(etapa__nome__icontains='mec').exists()
     except Exception:
         tem_mecanica = False
