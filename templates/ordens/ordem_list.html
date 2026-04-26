@@ -50,7 +50,7 @@
           <tr class="hover:bg-gray-50 transition-colors">
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center">
-                <i class="fas fa-tools text-indigo-500 mr-3"></i>
+                <i class="fas fa-tools mr-3 {% if ordem.precisa_programar %}text-red-500{% else %}text-emerald-600{% endif %}"></i>
                 <div class="text-sm font-bold text-gray-900 font-mono">{{ ordem.numero }}</div>
               </div>
             </td>

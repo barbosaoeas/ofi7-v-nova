@@ -2,9 +2,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
+from django.db.models import Exists, OuterRef, Q
 from datetime import date
 
-from .models import OrdemServico
+from .models import OrdemServico, OrdemEtapa
 from .forms import OrdemServicoForm, OrdemEtapaFormSet
 
 @login_required
@@ -14,7 +15,21 @@ def ordem_list(request):
     # O ideal é redirecionar para o painel kanban se for a gestão principal
     filtro = request.GET.get('filtro', '') or 'nao_concluidas'
 
-    base_qs = OrdemServico.objects.select_related('cliente', 'veiculo').order_by('-criado_em')
+    tem_prog_qs = OrdemEtapa.objects.filter(ordem_id=OuterRef('pk')).filter(
+        Q(data_programada__isnull=False)
+        | Q(funcionario__isnull=False)
+        | Q(status__in=['programado', 'em_andamento', 'finalizada'])
+    )
+    pendente_prog_qs = OrdemEtapa.objects.filter(ordem_id=OuterRef('pk')).filter(
+        Q(status='aguardando')
+        | (Q(status='programado') & (Q(data_programada__isnull=True) | Q(funcionario__isnull=True)))
+    )
+    base_qs = (
+        OrdemServico.objects.select_related('cliente', 'veiculo')
+        .annotate(tem_programacao=Exists(tem_prog_qs))
+        .annotate(precisa_programar=Exists(pendente_prog_qs))
+        .order_by('-criado_em')
+    )
     qs = base_qs
     if filtro != 'todas':
         qs = qs.exclude(status__in=['concluida', 'entregue'])
