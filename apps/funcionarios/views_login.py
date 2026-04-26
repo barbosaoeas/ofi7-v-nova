@@ -22,6 +22,8 @@ def login_view(request):
     """
     # Se já está logado, redireciona
     if request.user.is_authenticated:
+        if getattr(request.user, 'perfil', '') == 'visual':
+            return redirect('kanban:producao')
         return redirect('dashboard:index')
 
     # Busca todos os funcionários ativos para exibir na tela

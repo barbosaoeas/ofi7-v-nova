@@ -1,7 +1,7 @@
 """
 Views do Dashboard
 """
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum, Q
 from django.utils import timezone
@@ -20,6 +20,8 @@ from .models import ConfiguracaoSistema
 @login_required
 def dashboard(request):
     """Dashboard principal com filtro de período"""
+    if getattr(request.user, 'perfil', '') == 'visual':
+        return redirect('kanban:producao')
 
     hoje = date.today()
     ano_atual = hoje.year
