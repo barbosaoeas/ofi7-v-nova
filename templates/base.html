@@ -25,6 +25,16 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-gray-50 {% if user.is_authenticated and user.perfil == 'visual' %}{% else %}pt-16{% endif %}">
+
+    {% if user.is_authenticated and user.perfil == 'visual' %}
+    <div class="fixed top-2 right-2 z-[60]">
+        <a href="{% url 'funcionarios:logout' %}"
+           class="inline-flex items-center gap-2 bg-gray-900/80 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-gray-900 transition">
+            <i class="fas fa-sign-out-alt"></i>
+            Trocar usuário
+        </a>
+    </div>
+    {% endif %}
     
     <!-- Navbar -->
     {% if not user.is_authenticated or user.perfil != 'visual' %}
