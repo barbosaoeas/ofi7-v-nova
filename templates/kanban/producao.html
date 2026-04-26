@@ -26,7 +26,7 @@
                        onchange="window.location.href='?data=' + this.value + '&funcionario={{ funcionario_filter }}'">
             </div>
 
-            {% if user.perfil != 'operacional' %}
+            {% if user.perfil != 'operacional' and user.perfil != 'visual' %}
             <div class="flex items-center">
                 <label class="text-xs text-gray-600 mr-2">Funcionário:</label>
                 <select class="px-2 py-1 text-sm border border-gray-300 rounded"
@@ -43,6 +43,12 @@
         </div>
     </div>
 </div>
+
+{% if user.perfil == 'visual' %}
+<script>
+  setInterval(() => window.location.reload(), 20000)
+</script>
+{% endif %}
 
 <!-- Kanban Board -->
 <div class="overflow-x-hidden md:overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">

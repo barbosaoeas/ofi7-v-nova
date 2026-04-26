@@ -94,6 +94,7 @@
     </div>
 
     <!-- Botões de ação — responsável pela etapa OU admin/gerente/superuser -->
+    {% if user.perfil != 'visual' %}
     {% if etapa.funcionario_id == user.id or user.perfil == 'admin' or user.perfil == 'gerente' or user.is_superuser %}
     <div class="flex gap-1 flex-col mt-2">
 
@@ -142,6 +143,7 @@
     <div class="text-xs text-blue-600 font-medium text-center py-1 bg-blue-50 rounded mt-2">
       <i class="fas fa-spinner fa-spin mr-1"></i>Em execução
     </div>
+    {% endif %}
     {% endif %}
 
     {% if etapa.mostrar_entrega or etapa.ordem.status == 'concluida' %}

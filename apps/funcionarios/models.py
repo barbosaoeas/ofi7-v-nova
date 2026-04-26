@@ -16,6 +16,7 @@ class Funcionario(AbstractUser):
     
     PERFIL_CHOICES = [
         ('operacional', 'Operacional'),
+        ('visual', 'Visual'),
         ('supervisor', 'Supervisor'),
         ('gerente', 'Gerente'),
         ('admin', 'Administrador'),

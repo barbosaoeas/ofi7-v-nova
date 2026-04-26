@@ -34,6 +34,7 @@ def login_view(request):
 
     PERFIL_LABELS = {
         'operacional': 'Operacional',
+        'visual': 'Visual',
         'supervisor': 'Supervisor',
         'gerente': 'Gerente',
         'admin': 'Administrador',
@@ -86,8 +87,12 @@ def autenticar_view(request):
             
             if hasattr(user, 'deve_mudar_senha') and user.deve_mudar_senha:
                 return redirect('funcionarios:mudar_senha')
-                
-            next_url = request.POST.get('next') or request.GET.get('next') or 'dashboard:index'
+
+            next_url = request.POST.get('next') or request.GET.get('next')
+            if not next_url and getattr(user, 'perfil', '') == 'visual':
+                next_url = 'kanban:producao'
+            if not next_url:
+                next_url = 'dashboard:index'
             # Se next_url for uma URL relativa, redireciona direto
             if next_url.startswith('/'):
                 return redirect(next_url)
