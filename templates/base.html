@@ -24,10 +24,10 @@
     
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 pt-16">
     
     <!-- Navbar -->
-    <nav class="text-white shadow-lg" style="background-color: {{ sistema_config.cor_primaria|default:'#2563EB' }};">
+    <nav class="text-white shadow-lg fixed top-0 inset-x-0 z-50" style="background-color: {{ sistema_config.cor_primaria|default:'#2563EB' }};">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center space-x-3">

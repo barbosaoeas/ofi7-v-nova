@@ -69,6 +69,7 @@ def cliente_create(request):
             cliente = form.save()
             messages.success(request, f'Cliente "{cliente.nome}" cadastrado com sucesso!')
             return redirect('clientes:list')
+        messages.error(request, 'Corrija os erros do formulário para salvar o cliente.')
     else:
         form = ClienteForm()
     
@@ -88,6 +89,7 @@ def cliente_update(request, pk):
             form.save()
             messages.success(request, f'Cliente "{cliente.nome}" atualizado com sucesso!')
             return redirect('clientes:list')
+        messages.error(request, 'Corrija os erros do formulário para salvar as alterações.')
     else:
         form = ClienteForm(instance=cliente)
     

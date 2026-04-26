@@ -559,7 +559,7 @@ def agenda_mao_obra(request):
     if capacidade_semanal < 0:
         capacidade_semanal = Decimal('44')
 
-    funcionarios = list(Funcionario.objects.filter(ativo=True).order_by('first_name'))
+    funcionarios = list(Funcionario.objects.filter(ativo=True, perfil='operacional').order_by('first_name'))
     semanas = []
     inicio_semana = data_inicio - timedelta(days=data_inicio.weekday())
     fim_semana = data_fim - timedelta(days=data_fim.weekday())
@@ -576,6 +576,7 @@ def agenda_mao_obra(request):
             data_programada__lte=data_fim,
         )
         .exclude(status='finalizada')
+        .filter(models.Q(funcionario__perfil='operacional') | models.Q(funcionario__isnull=True))
         .values('data_programada', 'funcionario_id', 'horas_orcadas')
     )
 
