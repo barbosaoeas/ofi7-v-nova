@@ -104,7 +104,7 @@
           </thead>
           <tbody class="divide-y divide-gray-200 bg-white">
             {% for form in formset %}
-            <tr>
+            <tr class="{% if form.instance.status == 'programado' %}bg-emerald-50{% endif %}">
               {% for hidden in form.hidden_fields %}
                 {{ hidden }}
               {% endfor %}
