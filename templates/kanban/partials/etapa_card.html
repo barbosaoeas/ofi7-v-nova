@@ -80,10 +80,18 @@
     <!-- Informações Compactas -->
     <div class="space-y-0.5 mb-2 text-xs text-gray-600">
         <p class="truncate"><i class="fas fa-user text-gray-400 mr-1"></i>{{ etapa.ordem.cliente.nome }}</p>
-        <p class="truncate"><i class="fas fa-car text-gray-400 mr-1"></i>
+        {% if etapa.nome and 'finaliz' in etapa.nome|lower %}
+        <p class="break-words whitespace-normal leading-tight">
+            <i class="fas fa-car text-gray-400 mr-1"></i>
             <strong class="uppercase text-gray-800">{{ etapa.ordem.veiculo.placa }}</strong>
         </p>
-        <p class="truncate"><i class="fas fa-tag text-gray-400 mr-1"></i>{{ etapa.ordem.veiculo.modelo_veiculo.nome }}</p>
+        {% else %}
+        <p class="break-words whitespace-normal leading-tight">
+            <i class="fas fa-car text-gray-400 mr-1"></i>
+            {% if etapa.ordem.veiculo.modelo_veiculo %}{{ etapa.ordem.veiculo.modelo_veiculo.nome }} — {% endif %}
+            <strong class="uppercase text-gray-800">{{ etapa.ordem.veiculo.placa }}</strong>
+        </p>
+        {% endif %}
         {% if etapa.funcionario and not etapa.modo_finalizado %}
         <p class="truncate"><i class="fas fa-hard-hat text-indigo-400 mr-1"></i>{{ etapa.funcionario.first_name }}</p>
         {% endif %}
