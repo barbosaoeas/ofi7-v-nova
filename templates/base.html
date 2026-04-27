@@ -24,9 +24,9 @@
     
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gray-50 {% if user.is_authenticated and user.perfil == 'visual' %}{% else %}pt-16{% endif %}">
+<body class="bg-gray-50 {% if user.is_authenticated and user.perfil|default:''|lower == 'visual' %}{% else %}pt-16{% endif %}">
 
-    {% if user.is_authenticated and user.perfil == 'visual' %}
+    {% if user.is_authenticated and user.perfil|default:''|lower == 'visual' %}
     <div class="fixed top-2 right-2 z-[60]">
         <a href="{% url 'funcionarios:logout' %}"
            class="inline-flex items-center gap-2 bg-gray-900/80 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-gray-900 transition">
@@ -37,7 +37,7 @@
     {% endif %}
     
     <!-- Navbar -->
-    {% if not user.is_authenticated or user.perfil != 'visual' %}
+    {% if not user.is_authenticated or user.perfil|default:''|lower != 'visual' %}
     <nav class="text-white shadow-lg fixed top-0 inset-x-0 z-50" style="background-color: {{ sistema_config.cor_primaria|default:'#2563EB' }};">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-16">
@@ -136,7 +136,7 @@
 
                   {% else %}
                   <!-- ── NAV OPERACIONAL ── -->
-                  {% if user.perfil == 'visual' %}
+                  {% if user.perfil|default:''|lower == 'visual' %}
                   <a href="{% url 'kanban:producao' %}" class="hover:text-blue-200 font-semibold">
                       <i class="fas fa-tasks mr-2"></i>Kanban
                   </a>
@@ -189,7 +189,7 @@
     {% endif %}
     
     <!-- Main Content -->
-    <main class="{% block main_class %}{% if user.is_authenticated and user.perfil == 'visual' %}p-0{% else %}container mx-auto px-4 py-6{% endif %}{% endblock %}">
+    <main class="{% block main_class %}{% if user.is_authenticated and user.perfil|default:''|lower == 'visual' %}p-0{% else %}container mx-auto px-4 py-6{% endif %}{% endblock %}">
         <!-- Mensagens -->
         {% if messages %}
         <div class="mb-4">
@@ -213,7 +213,7 @@
     </main>
     
     <!-- Footer -->
-    {% if not user.is_authenticated or user.perfil != 'visual' %}
+    {% if not user.is_authenticated or user.perfil|default:''|lower != 'visual' %}
     <footer class="text-white mt-12" style="background-color: {{ sistema_config.cor_rodape|default:'#111827' }};">
         <div class="container mx-auto px-4 py-6">
             <div class="text-center">

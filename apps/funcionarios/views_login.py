@@ -22,7 +22,7 @@ def login_view(request):
     """
     # Se já está logado, redireciona
     if request.user.is_authenticated:
-        if getattr(request.user, 'perfil', '') == 'visual':
+        if str(getattr(request.user, 'perfil', '') or '').lower() == 'visual':
             return redirect('kanban:producao')
         return redirect('dashboard:index')
 
@@ -91,7 +91,7 @@ def autenticar_view(request):
                 return redirect('funcionarios:mudar_senha')
 
             next_url = request.POST.get('next') or request.GET.get('next')
-            if not next_url and getattr(user, 'perfil', '') == 'visual':
+            if not next_url and str(getattr(user, 'perfil', '') or '').lower() == 'visual':
                 next_url = 'kanban:producao'
             if not next_url:
                 next_url = 'dashboard:index'

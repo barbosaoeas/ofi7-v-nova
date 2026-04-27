@@ -20,7 +20,7 @@ from .models import ConfiguracaoSistema
 @login_required
 def dashboard(request):
     """Dashboard principal com filtro de período"""
-    if getattr(request.user, 'perfil', '') == 'visual':
+    if str(getattr(request.user, 'perfil', '') or '').lower() == 'visual':
         return redirect('kanban:producao')
 
     hoje = date.today()

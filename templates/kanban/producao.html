@@ -2,10 +2,10 @@
 
 {% block title %}Kanban de Produção{% endblock %}
 
-{% block main_class %}{% if user.perfil == 'visual' %}p-0 h-[100vh] overflow-hidden{% else %}px-4 py-4{% endif %}{% endblock %}
+{% block main_class %}{% if user.perfil|default:''|lower == 'visual' %}p-0 h-[100dvh] overflow-hidden{% else %}px-4 py-4{% endif %}{% endblock %}
 
 {% block content %}
-{% if user.perfil != 'visual' %}
+{% if user.perfil|default:''|lower != 'visual' %}
 <!-- Header Compacto -->
 <div class="mb-4 bg-white rounded-lg shadow-sm p-4">
     <div class="flex items-center justify-between">
@@ -27,7 +27,7 @@
                        onchange="window.location.href='?data=' + this.value + '&funcionario={{ funcionario_filter }}'">
             </div>
 
-            {% if user.perfil != 'operacional' and user.perfil != 'visual' %}
+            {% if user.perfil|default:''|lower != 'operacional' and user.perfil|default:''|lower != 'visual' %}
             <div class="flex items-center">
                 <label class="text-xs text-gray-600 mr-2">Funcionário:</label>
                 <select class="px-2 py-1 text-sm border border-gray-300 rounded"
@@ -46,21 +46,21 @@
 </div>
 {% endif %}
 
-{% if user.perfil == 'visual' %}
+{% if user.perfil|default:''|lower == 'visual' %}
 <script>
   setInterval(() => window.location.reload(), 20000)
 </script>
 {% endif %}
 
 <!-- Kanban Board -->
-<div class="{% if user.perfil == 'visual' %}h-[100vh] overflow-x-auto px-3{% else %}overflow-x-hidden md:overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0{% endif %}">
-    <div class="flex flex-col md:grid md:grid-cols-9 gap-4 md:gap-2 {% if user.perfil == 'visual' %}h-full{% endif %}" style="min-width: 100%;">
+<div class="{% if user.perfil|default:''|lower == 'visual' %}h-[100dvh] overflow-x-auto px-3{% else %}overflow-x-hidden md:overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0{% endif %}">
+    <div class="flex flex-col md:grid md:grid-cols-9 gap-4 md:gap-2 {% if user.perfil|default:''|lower == 'visual' %}h-full{% endif %}" style="min-width: 100%;">
 
         {% for nome_etapa, dados in colunas.items %}
         <!-- Coluna -->
-        <div class="bg-white rounded-lg shadow-md w-full md:min-w-0">
+        <div class="bg-white rounded-lg shadow-md w-full md:min-w-0 {% if user.perfil|default:''|lower == 'visual' %}h-full flex flex-col{% endif %}">
             <!-- Header da Coluna - Compacto -->
-            <div class="p-2 border-b border-gray-200"
+            <div class="{% if user.perfil|default:''|lower == 'visual' %}p-1.5{% else %}p-2{% endif %} border-b border-gray-200"
                  style="background-color: {{ dados.etapa_padrao.cor }}20;">
                 <div class="flex items-center justify-between">
                     <h3 class="font-bold text-sm text-gray-800 truncate">
@@ -73,7 +73,7 @@
             </div>
 
             <!-- Cards - Auto height no mobile, Scroll no desktop -->
-            <div class="p-2 space-y-2 md:overflow-y-auto {% if user.perfil == 'visual' %}h-[calc(100vh-72px)]{% else %}max-h-[60vh] md:max-h-none md:h-[calc(100vh-280px)]{% endif %} overflow-y-auto">
+            <div class="{% if user.perfil|default:''|lower == 'visual' %}p-1.5 space-y-2 flex-1 overflow-hidden{% else %}p-2 space-y-2 md:overflow-y-auto max-h-[60vh] md:max-h-none md:h-[calc(100vh-280px)] overflow-y-auto{% endif %}">
                 {% for etapa in dados.etapas %}
                     {% include 'kanban/partials/etapa_card.html' with etapa=etapa %}
                 {% empty %}
@@ -89,7 +89,7 @@
     </div>
 </div>
 
-{% if user.perfil != 'visual' %}
+{% if user.perfil|default:''|lower != 'visual' %}
 <!-- Legenda -->
 <div class="mt-6 bg-white rounded-lg shadow-md p-4">
     <h4 class="font-semibold text-gray-700 mb-3">Legenda:</h4>

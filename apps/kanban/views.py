@@ -202,7 +202,7 @@ def kanban_producao(request):
     if nome_finalizado in colunas and etapas_finalizado:
         colunas[nome_finalizado]['etapas'].extend(etapas_finalizado)
 
-    if getattr(request.user, 'perfil', '') == 'visual':
+    if str(getattr(request.user, 'perfil', '') or '').lower() == 'visual':
         for nome, dados in colunas.items():
             limite = 1 if nome == nome_finalizado else 2
             dados['etapas'] = list(dados.get('etapas') or [])[:limite]

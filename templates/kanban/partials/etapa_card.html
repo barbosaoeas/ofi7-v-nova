@@ -5,11 +5,11 @@
     {% elif etapa.status == 'finalizada' %}border-green-500 bg-green-50
     {% elif etapa.status == 'programado' %}border-indigo-400
     {% else %}border-gray-300{% endif %}
-    rounded shadow-sm hover:shadow-md transition-shadow p-2"
+    rounded shadow-sm hover:shadow-md transition-shadow {% if user.perfil|default:''|lower == 'visual' %}p-1.5{% else %}p-2{% endif %}"
     id="etapa-card-{{ etapa.id }}">
 
     <!-- Header: OS + Etapa + Avatar do responsável -->
-    <div class="flex items-start justify-between mb-1.5">
+    <div class="flex items-start justify-between {% if user.perfil|default:''|lower == 'visual' %}mb-1{% else %}mb-1.5{% endif %}">
         <div class="flex-1 min-w-0">
             <p class="font-bold text-xs text-indigo-700 font-mono flex items-center gap-2">
               <span>{{ etapa.ordem.numero }}</span>
@@ -26,6 +26,20 @@
                     {% if etapa.execucao == 'terceiro' %}bg-orange-100 text-orange-800 border-orange-200
                     {% else %}bg-emerald-100 text-emerald-800 border-emerald-200{% endif %}">
                     {% if etapa.execucao == 'terceiro' %}TERCEIRO{% else %}OFICINA{% endif %}
+                  </span>
+                {% endif %}
+                {% if user.perfil|default:''|lower == 'visual' %}
+                  <span class="flex-shrink-0 text-[10px] font-extrabold px-2 py-0.5 rounded-full border
+                    {% if etapa.status == 'em_andamento' %}bg-blue-100 text-blue-800 border-blue-200
+                    {% elif etapa.status == 'aguardando_peca' %}bg-orange-100 text-orange-800 border-orange-200
+                    {% elif etapa.status == 'finalizada' %}bg-green-100 text-green-800 border-green-200
+                    {% elif etapa.status == 'programado' %}bg-indigo-100 text-indigo-800 border-indigo-200
+                    {% else %}bg-gray-100 text-gray-700 border-gray-200{% endif %}">
+                    {% if etapa.status == 'em_andamento' %}ATIVO
+                    {% elif etapa.status == 'aguardando_peca' %}PEÇA
+                    {% elif etapa.status == 'finalizada' %}PRONTO
+                    {% elif etapa.status == 'programado' %}PROG
+                    {% else %}AGUARD{% endif %}
                   </span>
                 {% endif %}
             </div>
@@ -45,6 +59,7 @@
     </div>
 
     <!-- Status Badge -->
+    {% if user.perfil|default:''|lower != 'visual' %}
     <div class="mb-1.5">
         <span class="text-xs font-semibold px-1.5 py-0.5 rounded-full
             {% if etapa.status == 'em_andamento' %}bg-blue-100 text-blue-800
@@ -68,6 +83,7 @@
       </span>
     </div>
     {% endif %}
+    {% endif %}
 
     {% if etapa.em_patio and etapa.patio_banner %}
     <div class="mb-1.5">
@@ -78,7 +94,7 @@
     {% endif %}
 
     <!-- Informações Compactas -->
-    <div class="space-y-0.5 mb-2 text-xs text-gray-600">
+    <div class="space-y-0.5 {% if user.perfil|default:''|lower == 'visual' %}mb-1.5{% else %}mb-2{% endif %} text-xs text-gray-600">
         <p class="truncate"><i class="fas fa-user text-gray-400 mr-1"></i>{{ etapa.ordem.cliente.nome }}</p>
         {% if etapa.nome and 'finaliz' in etapa.nome|lower %}
         <p class="break-words whitespace-normal leading-tight">
@@ -95,7 +111,7 @@
         {% if etapa.funcionario and not etapa.modo_finalizado %}
         <p class="truncate"><i class="fas fa-hard-hat text-indigo-400 mr-1"></i>{{ etapa.funcionario.first_name }}</p>
         {% endif %}
-        {% if etapa.horas_orcadas and not etapa.modo_finalizado %}
+        {% if etapa.horas_orcadas and not etapa.modo_finalizado and user.perfil|default:''|lower != 'visual' %}
         <p><i class="fas fa-clock text-gray-400 mr-1"></i>{{ etapa.horas_orcadas }}h est.
           {% if etapa.horas_gastas_real %}<span class="text-indigo-600 font-bold">| {{ etapa.horas_gastas_real|floatformat:1 }}h real</span>{% endif %}
         </p>
@@ -103,7 +119,7 @@
     </div>
 
     <!-- Botões de ação — responsável pela etapa OU admin/gerente/superuser -->
-    {% if user.perfil != 'visual' %}
+    {% if user.perfil|default:''|lower != 'visual' %}
     {% if etapa.funcionario_id == user.id or user.perfil == 'admin' or user.perfil == 'gerente' or user.is_superuser %}
     <div class="flex gap-1 flex-col mt-2">
 
