@@ -16,11 +16,12 @@ class OrdemServicoForm(forms.ModelForm):
 class OrdemEtapaForm(forms.ModelForm):
     class Meta:
         model = OrdemEtapa
-        fields = ['funcionario', 'auxiliares', 'data_programada', 'horas_gastas_real', 'status']
+        fields = ['funcionario', 'auxiliares', 'data_programada', 'pular_etapa', 'horas_gastas_real', 'status']
         widgets = {
             'funcionario': forms.Select(attrs={'class': 'w-full bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900'}),
             'auxiliares': forms.SelectMultiple(attrs={'class': 'tom-select-multiple w-full text-sm', 'data-placeholder': 'Selecione...'}),
             'data_programada': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'w-full bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900'}),
+            'pular_etapa': forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-indigo-600 border-gray-300 rounded'}),
             'horas_gastas_real': forms.NumberInput(attrs={'class': 'w-full bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900 font-mono', 'step': '0.1'}),
             'status': forms.Select(attrs={'class': 'w-full bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900 font-medium'}),
         }

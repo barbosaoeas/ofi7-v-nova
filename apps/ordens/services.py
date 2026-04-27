@@ -258,15 +258,16 @@ class OrdemEtapaService:
         except Exception:
             pass
 
-        pendente_anterior = OrdemEtapa.objects.filter(
-            ordem=etapa.ordem,
-            sequencia__lt=etapa.sequencia,
-        ).exclude(
-            status='finalizada'
-        ).order_by('sequencia').first()
+        if not bool(getattr(etapa, 'pular_etapa', False)):
+            pendente_anterior = OrdemEtapa.objects.filter(
+                ordem=etapa.ordem,
+                sequencia__lt=etapa.sequencia,
+            ).exclude(
+                status='finalizada'
+            ).order_by('sequencia').first()
 
-        if pendente_anterior:
-            return False, f'Conclua primeiro a etapa anterior: "{pendente_anterior.nome}" (OS {etapa.ordem.numero}).'
+            if pendente_anterior:
+                return False, f'Conclua primeiro a etapa anterior: "{pendente_anterior.nome}" (OS {etapa.ordem.numero}).'
 
         return True, ""
     
@@ -464,15 +465,16 @@ class SessaoService:
             except Exception:
                 pass
 
-            pendente_anterior = OrdemEtapa.objects.filter(
-                ordem=etapa.ordem,
-                sequencia__lt=etapa.sequencia,
-            ).exclude(
-                status='finalizada'
-            ).order_by('sequencia').first()
+            if not bool(getattr(etapa, 'pular_etapa', False)):
+                pendente_anterior = OrdemEtapa.objects.filter(
+                    ordem=etapa.ordem,
+                    sequencia__lt=etapa.sequencia,
+                ).exclude(
+                    status='finalizada'
+                ).order_by('sequencia').first()
 
-            if pendente_anterior:
-                raise ValueError(f'Conclua primeiro a etapa anterior: "{pendente_anterior.nome}" (OS {etapa.ordem.numero}).')
+                if pendente_anterior:
+                    raise ValueError(f'Conclua primeiro a etapa anterior: "{pendente_anterior.nome}" (OS {etapa.ordem.numero}).')
 
             sessao = SessaoTrabalho.objects.create(etapa=etapa, funcionario=funcionario)
 

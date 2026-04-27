@@ -170,6 +170,7 @@ class OrdemEtapa(models.Model):
 
     # Programação
     data_programada = models.DateField('Data Programada', null=True, blank=True)
+    pular_etapa = models.BooleanField('Pular Etapa (não seguir ordem)', default=False)
 
     # Status e datas
     status = models.CharField(

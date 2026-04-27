@@ -97,6 +97,7 @@
               <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Responsável/Titular</th>
               <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-64">Auxiliares</th>
               <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Data</th>
+              <th scope="col" class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Pular etapa</th>
               <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Horas Estimadas</th>
               <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Horas Reais</th>
               <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
@@ -132,6 +133,10 @@
                 <div class="w-36">
                   {{ form.data_programada }}
                 </div>
+              </td>
+
+              <td class="px-4 py-4 whitespace-nowrap text-center">
+                {{ form.pular_etapa }}
               </td>
               
               <td class="px-4 py-4 whitespace-nowrap text-center text-sm font-mono text-gray-600 bg-gray-50">

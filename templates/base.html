@@ -40,7 +40,7 @@
     {% if not user.is_authenticated or user.perfil|default:''|lower != 'visual' %}
     <nav class="text-white shadow-lg fixed top-0 inset-x-0 z-50" style="background-color: {{ sistema_config.cor_primaria|default:'#2563EB' }};">
         <div class="container mx-auto px-4">
-            <div class="flex items-center justify-between h-16">
+            <div class="flex items-center justify-between h-16 gap-4">
                 <div class="flex items-center space-x-3">
                     {% if sistema_config and sistema_config.logo %}
                       <img src="{{ sistema_config.logo.url }}" alt="Logo" class="h-9 w-9 rounded bg-white/90 object-contain">
@@ -51,15 +51,12 @@
                 </div>
                 
                 <!-- Menu -->
-                <div class="hidden md:flex items-center space-x-6">
+                <div class="hidden md:flex items-center space-x-6 flex-1 min-w-0">
 
                   {% if user.is_superuser or user.perfil == 'admin' or user.perfil == 'gerente' or user.perfil == 'supervisor' or user.perfil == 'orcamentista' %}
                   <!-- ── NAV GESTORES ── -->
                   <a href="{% url 'dashboard:index' %}" class="hover:text-blue-200">
                       <i class="fas fa-home mr-2"></i>Dashboard
-                  </a>
-                  <a href="{% url 'orcamentos:list' %}" class="hover:text-blue-200">
-                      <i class="fas fa-file-invoice-dollar mr-2"></i>Orçamentos
                   </a>
                   <a href="{% url 'ordens:list' %}" class="hover:text-blue-200">
                       <i class="fas fa-tools mr-2"></i>Ordens
@@ -91,6 +88,10 @@
                       </button>
                       <div x-show="open" @click.away="open = false" x-cloak
                            class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg py-2 z-50">
+                          <a href="{% url 'orcamentos:list' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                              <i class="fas fa-file-invoice-dollar mr-2 text-blue-500"></i>Orçamentos
+                          </a>
+                          <hr class="my-2">
                           <a href="{% url 'clientes:list' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
                               <i class="fas fa-users mr-2 text-blue-500"></i>Clientes
                           </a>
@@ -153,15 +154,15 @@
                 </div>
                 
                 <!-- User Menu -->
-                <div x-data="{ open: false }" class="relative">
-                    <button @click="open = !open" class="flex items-center space-x-2 hover:text-blue-200">
+                <div x-data="{ open: false }" class="relative flex-shrink-0">
+                    <button @click="open = !open" class="flex items-center gap-2 hover:text-blue-200 min-w-0">
+                        <span class="max-w-[180px] truncate">{{ user.get_full_name|default:user.username }}</span>
                         {% if user.is_authenticated and user.foto %}
-                          <img src="{{ user.foto.url }}" alt="{{ user.get_full_name|default:user.username }}" class="h-8 w-8 rounded-full object-cover border border-white/30">
+                          <img src="{{ user.foto.url }}" alt="{{ user.get_full_name|default:user.username }}" class="h-8 w-8 rounded-full object-cover border border-white/30 flex-shrink-0">
                         {% else %}
-                          <i class="fas fa-user-circle text-2xl"></i>
+                          <i class="fas fa-user-circle text-2xl flex-shrink-0"></i>
                         {% endif %}
-                        <span>{{ user.get_full_name|default:user.username }}</span>
-                        <i class="fas fa-chevron-down text-sm"></i>
+                        <i class="fas fa-chevron-down text-sm flex-shrink-0"></i>
                     </button>
                     
                     <div x-show="open" @click.away="open = false" x-cloak

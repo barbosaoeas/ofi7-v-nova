@@ -83,8 +83,10 @@ def kanban_producao(request):
         primeira_pendente_encontrada = False
         for e in lista_ordenada:
             if e.status != 'finalizada':
-                e.bloqueada_sequencia = primeira_pendente_encontrada
-                primeira_pendente_encontrada = True
+                pular_etapa = bool(getattr(e, 'pular_etapa', False))
+                e.bloqueada_sequencia = (primeira_pendente_encontrada and not pular_etapa)
+                if not pular_etapa:
+                    primeira_pendente_encontrada = True
             else:
                 e.bloqueada_sequencia = False
 
