@@ -42,6 +42,7 @@
             <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Veículo</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Data de Abertura</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Etapas</th>
             <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
           </tr>
         </thead>
@@ -76,6 +77,26 @@
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
               {{ ordem.data_abertura|date:"d/m/Y" }}
             </td>
+            <td class="px-6 py-4 text-sm text-gray-600">
+              {% if ordem.etapas_finalizadas %}
+                <div class="text-[11px] font-semibold text-gray-500 mb-1">Etapas</div>
+                <div class="flex flex-wrap gap-1">
+                  {% for etapa in ordem.etapas_finalizadas %}
+                    {% if forloop.counter <= 4 %}
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200"
+                            title="{{ etapa.nome }}">
+                        ✓ {{ etapa.nome|truncatechars:14 }}
+                      </span>
+                    {% endif %}
+                  {% endfor %}
+                  {% if ordem.etapas_finalizadas|length > 4 %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-50 text-gray-700 border border-gray-200">
+                      +{{ ordem.etapas_finalizadas|length|add:"-4" }}
+                    </span>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </td>
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
               {% if ordem.status == 'concluida' or ordem.status == 'entregue' or ordem.status == 'cancelada' %}
                 <button disabled class="text-gray-400 bg-gray-100 px-3 py-2 rounded-lg cursor-not-allowed opacity-60">
@@ -90,7 +111,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+            <td colspan="7" class="px-6 py-12 text-center text-gray-500">
               <i class="fas fa-inbox text-4xl mb-3 text-gray-300 block"></i>
               Nenhuma Ordem de Serviço encontrada. Aprove orçamentos para gerar ordens automaticamente.
             </td>

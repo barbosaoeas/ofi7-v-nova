@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Exists, OuterRef, Q, Prefetch
 from datetime import date
 
 from .models import OrdemServico, OrdemEtapa
@@ -28,6 +28,11 @@ def ordem_list(request):
         OrdemServico.objects.select_related('cliente', 'veiculo')
         .annotate(tem_programacao=Exists(tem_prog_qs))
         .annotate(precisa_programar=Exists(pendente_prog_qs))
+        .prefetch_related(Prefetch(
+            'etapas',
+            queryset=OrdemEtapa.objects.filter(status='finalizada').only('id', 'nome', 'sequencia', 'ordem').order_by('sequencia', 'id'),
+            to_attr='etapas_finalizadas',
+        ))
         .order_by('-criado_em')
     )
     qs = base_qs
