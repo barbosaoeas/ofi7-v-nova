@@ -8,6 +8,7 @@ urlpatterns = [
     path('minhas-tarefas/', views.minhas_tarefas, name='minhas_tarefas'),
     path('etapa/<int:etapa_id>/mover/', views.mover_etapa, name='mover_etapa'),
     path('etapa/<int:etapa_id>/atribuir/', views.atribuir_funcionario, name='atribuir_funcionario'),
+    path('etapa/<int:etapa_id>/reprogramar/', views.reprogramar_etapa, name='reprogramar_etapa'),
     path('etapa/<int:etapa_id>/iniciar/', views.iniciar_tarefa, name='iniciar_tarefa'),
     path('etapa/<int:etapa_id>/concluir/', views.concluir_tarefa, name='concluir_tarefa'),
     # Novas rotas de sessão de trabalho

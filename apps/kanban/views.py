@@ -467,6 +467,16 @@ def agenda_producao(request):
         'funcionario'
     ).order_by('data_programada', 'funcionario__first_name', 'sequencia')
 
+    # Etapas atrasadas (antes do período) — ainda não finalizadas
+    etapas_atrasadas = OrdemEtapa.objects.filter(
+        data_programada__lt=data_inicio,
+    ).exclude(
+        status='finalizada'
+    ).select_related(
+        'ordem', 'ordem__cliente', 'ordem__veiculo', 'ordem__orcamento',
+        'funcionario'
+    ).order_by('data_programada', 'funcionario__first_name', 'sequencia')
+
     # Etapas sem data (no pátio — sem programação)
     sem_data = OrdemEtapa.objects.filter(
         data_programada__isnull=True,
@@ -526,6 +536,7 @@ def agenda_producao(request):
 
     context = {
         'agenda': agenda,  # dict: {date: [etapas]}
+        'etapas_atrasadas': etapas_atrasadas,
         'agenda_entrada': agenda_entrada,
         'agenda_entrada_json': json.dumps(agenda_entrada_json, ensure_ascii=False),
         'sem_data': sem_data,
@@ -535,6 +546,56 @@ def agenda_producao(request):
         'funcionarios': funcionarios,
     }
     return render(request, 'kanban/agenda.html', context)
+
+
+@login_required
+@require_POST
+def reprogramar_etapa(request, etapa_id):
+    from django.contrib import messages
+    from django.urls import reverse
+
+    perfil = getattr(request.user, 'perfil', '')
+    if not (request.user.is_superuser or perfil in ['admin', 'gerente', 'supervisor']):
+        messages.error(request, 'Acesso restrito a gestores.')
+        return redirect('kanban:producao')
+
+    etapa = get_object_or_404(OrdemEtapa, id=etapa_id)
+    data_programada = request.POST.get('data_programada')
+
+    if not data_programada:
+        messages.error(request, 'Informe a data para reprogramar.')
+        return redirect(request.POST.get('next') or reverse('kanban:agenda'))
+
+    try:
+        from datetime import datetime
+        data_programada_date = datetime.strptime(data_programada, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        messages.error(request, 'Data programada inválida.')
+        return redirect(request.POST.get('next') or reverse('kanban:agenda'))
+
+    data_entrada = None
+    try:
+        data_entrada = getattr(etapa.ordem, 'data_chegada_veiculo', None)
+        if not data_entrada and getattr(etapa.ordem, 'orcamento_id', None):
+            data_entrada = getattr(etapa.ordem.orcamento, 'data_agendada', None)
+    except Exception:
+        data_entrada = None
+
+    hoje = date.today()
+    if data_entrada and data_entrada > hoje and data_programada_date < data_entrada:
+        messages.error(
+            request,
+            f'Veículo com entrada prevista para {data_entrada.strftime("%d/%m/%Y")}. Programação deve ser a partir desta data.'
+        )
+        return redirect(request.POST.get('next') or reverse('kanban:agenda'))
+
+    etapa.data_programada = data_programada_date
+    if etapa.funcionario_id and etapa.status in ['aguardando', 'programado']:
+        etapa.status = 'programado'
+    etapa.save(update_fields=['data_programada', 'status', 'atualizado_em'])
+
+    messages.success(request, f'Etapa reprogramada para {data_programada_date.strftime("%d/%m/%Y")}.')
+    return redirect(request.POST.get('next') or reverse('kanban:agenda'))
 
 
 @login_required

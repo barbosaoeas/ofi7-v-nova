@@ -31,6 +31,53 @@
     </form>
   </div>
 
+  {% if etapas_atrasadas %}
+  <div class="mb-8">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="bg-red-100 text-red-800 rounded-xl px-4 py-2 text-sm font-bold shadow-sm">
+        <i class="fas fa-triangle-exclamation mr-1"></i>Atrasadas — não concluídas antes de {{ data_inicio|date:"d/m/Y" }}
+      </div>
+      <div class="flex-1 h-px bg-red-100"></div>
+      <span class="text-xs text-gray-400 font-semibold">{{ etapas_atrasadas|length }} etapa{{ etapas_atrasadas|length|pluralize }}</span>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      {% for etapa in etapas_atrasadas %}
+      <div class="bg-white rounded-xl border-l-4 border-red-400 shadow-sm p-3">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-bold text-indigo-600 font-mono">{{ etapa.ordem.numero }}</p>
+            <p class="text-sm font-semibold text-gray-800 leading-tight truncate">{{ etapa.nome }}</p>
+            <p class="text-xs text-gray-500 truncate mt-0.5">
+              <i class="fas fa-calendar-day mr-1 text-gray-300"></i>{{ etapa.data_programada|date:"d/m/Y" }}
+              <span class="mx-1">•</span>
+              <i class="fas fa-user mr-1 text-gray-300"></i>{% if etapa.funcionario %}{{ etapa.funcionario.get_full_name }}{% else %}Sem responsável{% endif %}
+            </p>
+          </div>
+          <span class="text-xs font-semibold px-2 py-0.5 rounded-full
+            {% if etapa.status == 'em_andamento' %}bg-blue-100 text-blue-700
+            {% elif etapa.status == 'aguardando_peca' %}bg-orange-100 text-orange-700
+            {% else %}bg-gray-100 text-gray-600{% endif %}">
+            {{ etapa.get_status_display }}
+          </span>
+        </div>
+
+        <form method="post" action="{% url 'kanban:reprogramar_etapa' etapa.id %}" class="mt-3 flex items-center gap-2">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <input type="date" name="data_programada" value="{{ hoje|date:'Y-m-d' }}"
+                 class="flex-1 text-sm border border-gray-200 rounded-lg px-2 py-1.5">
+          <button type="submit"
+                  class="px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition">
+            Reprogramar
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Agenda de Entrada (Orçamentos) -->
   <div class="mb-8">
     <div class="flex items-center gap-3 mb-3">
