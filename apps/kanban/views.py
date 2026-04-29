@@ -330,6 +330,7 @@ def minhas_tarefas(request):
     """Kanban pessoal do colaborador — hoje + programadas futuras com sequência."""
     from apps.ordens.models import SessaoTrabalho
     from django.utils import timezone
+    from django.db.models import Sum
 
     funcionario = request.user
     hoje = date.today()
@@ -418,6 +419,23 @@ def minhas_tarefas(request):
         models.Q(funcionario=funcionario) | models.Q(auxiliares=funcionario) | models.Q(sessoes__funcionario=funcionario)
     ).distinct().select_related('ordem', 'ordem__cliente', 'ordem__veiculo').order_by('-data_fim')
 
+    comissoes_abertas = []
+    comissoes_abertas_total = 0
+    comissoes_abertas_qtd = 0
+    if str(getattr(funcionario, 'perfil', '') or '').lower() == 'operacional':
+        from apps.comissoes.models import Comissao
+        qs_comissoes_abertas = (
+            Comissao.objects.filter(
+                funcionario=funcionario,
+                status_pagamento__in=['pendente', 'aprovada'],
+            )
+            .select_related('ordem', 'etapa')
+            .order_by('-criado_em')
+        )
+        comissoes_abertas_total = qs_comissoes_abertas.aggregate(total=Sum('valor'))['total'] or 0
+        comissoes_abertas_qtd = qs_comissoes_abertas.count()
+        comissoes_abertas = list(qs_comissoes_abertas[:10])
+
     context = {
         'em_andamento': em_andamento,
         'sessao_ativa': sessao_ativa,
@@ -425,6 +443,9 @@ def minhas_tarefas(request):
         'tarefas_hoje': tarefas_hoje_com_status,
         'tarefas_futuras_agrupadas': tarefas_futuras_agrupadas,
         'finalizadas_hoje': finalizadas_hoje,
+        'comissoes_abertas': comissoes_abertas,
+        'comissoes_abertas_total': comissoes_abertas_total,
+        'comissoes_abertas_qtd': comissoes_abertas_qtd,
         'hoje': hoje,
     }
     return render(request, 'kanban/minhas_tarefas.html', context)
