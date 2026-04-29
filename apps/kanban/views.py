@@ -761,8 +761,13 @@ def sessao_iniciar(request, etapa_id):
     """Inicia uma sessão de trabalho."""
     from apps.ordens.services import SessaoService
     etapa = get_object_or_404(OrdemEtapa, id=etapa_id)
+    perfil = getattr(request.user, 'perfil', '')
+    is_admin = bool(request.user.is_superuser or perfil == 'admin')
+    funcionario = request.user
+    if is_admin and etapa.funcionario_id and etapa.funcionario_id != request.user.id:
+        funcionario = etapa.funcionario
     try:
-        SessaoService.iniciar_sessao(etapa, request.user)
+        SessaoService.iniciar_sessao(etapa, funcionario)
         return JsonResponse({'ok': True})
     except ValueError as e:
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
@@ -813,8 +818,13 @@ def iniciar_tarefa(request, etapa_id):
     """[LEGADO] mantido por compatibilidade"""
     from apps.ordens.services import OrdemEtapaService
     etapa = get_object_or_404(OrdemEtapa, id=etapa_id)
+    perfil = getattr(request.user, 'perfil', '')
+    is_admin = bool(request.user.is_superuser or perfil == 'admin')
+    funcionario = request.user
+    if is_admin and etapa.funcionario_id and etapa.funcionario_id != request.user.id:
+        funcionario = etapa.funcionario
     try:
-        OrdemEtapaService.iniciar_etapa(etapa, request.user)
+        OrdemEtapaService.iniciar_etapa(etapa.id, funcionario)
         try:
             from django.utils import timezone
             if etapa.status == 'em_andamento' and etapa.data_inicio:
